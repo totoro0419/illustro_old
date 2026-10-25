@@ -28,15 +28,17 @@ test('document background, viewport bitmap and temporary ink share exactly one m
  try{
   const scene=new ViewportScene(f.canvas);
   const document=new DocumentPresentation(f.canvas,4000,4000);
-  const ink=globalThis.document.createElement('canvas');f.canvas.after(ink);
+  const ink=globalThis.document.createElement('canvas');scene.inkPlane.append(ink);
   assert.deepEqual(f.surface.children,[scene.element]);
-  assert.deepEqual(scene.element.children,[document.element,f.canvas,ink]);
+  assert.deepEqual(scene.element.children,[document.element,f.canvas,scene.standby.front,scene.inkPlane]);
+  assert.deepEqual(scene.inkPlane.children,[ink]);
+  assert.equal(scene.standby.mode,'standby');
   scene.begin(view());scene.move(view(70,1.25,.12));
   assert.match(scene.element.style.transform,/^matrix\(/);
   const matrix=scene.element.style.transform.slice(7,-1).split(',').map(Number);
   assert.ok(Math.abs(matrix[0]-1.25*Math.cos(.12))<1e-8);
   assert.ok(Math.abs(matrix[1]-1.25*Math.sin(.12))<1e-8);
-  scene.complete();assert.equal(scene.element.style.transform,'none');
+  scene.complete();assert.equal(scene.element.style.transform,'none');assert.equal(scene.standby.mode,'standby');
   ink.remove();document.destroy();scene.destroy(f.canvas);
   assert.deepEqual(f.surface.children,[f.canvas]);
  }finally{f.restore();}
