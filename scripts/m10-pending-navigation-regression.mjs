@@ -6,6 +6,21 @@ import {createRequire} from 'node:module';
 
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.RT_PLAYWRIGHT_PATH??'playwright');
+const {PNG}=require(process.env.RT_PNG_PATH??'pngjs');
+const imageDiff=(before,after,box)=>{
+  const a=PNG.sync.read(before),b=PNG.sync.read(after);
+  assert.equal(a.width,b.width);assert.equal(a.height,b.height);
+  const x0=Math.max(0,Math.floor(box.x+box.w*.32)),x1=Math.min(a.width,Math.ceil(box.x+box.w*.91));
+  const y0=Math.max(0,Math.floor(box.y+box.h*.21)),y1=Math.min(a.height,Math.ceil(box.y+box.h*.84));
+  let changed=0;
+  for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){
+    const i=(y*a.width+x)*4;
+    const d=Math.abs(a.data[i]-b.data[i])+Math.abs(a.data[i+1]-b.data[i+1])+Math.abs(a.data[i+2]-b.data[i+2]);
+    if(d>65)changed++;
+  }
+  return changed;
+};
+
 const root=path.resolve('apps/editor/dist');
 const output=process.env.NAVIGATION_EVIDENCE??'/tmp/illustro-navigation/report.json';
 await fs.mkdir(path.dirname(output),{recursive:true});
@@ -85,6 +100,18 @@ try{
    return (await r.call('inspect')).gates.held==='formal';
   },null,{timeout:60000});
   const before=await state();
+  // A retained document can expose another painted child to native hit testing.
+  // Such artwork may stop bubbling pointer events. The stable viewport must
+  // still own two-finger navigation even when both touches start on that child.
+  await page.evaluate(()=>{
+    const surface=document.querySelector('.surface');
+    const child=document.createElement('div');
+    child.id='qa-nested-hit-target';
+    Object.assign(child.style,{position:'absolute',inset:'0',zIndex:'7',touchAction:'none',
+      pointerEvents:'auto',background:'transparent'});
+    for(const type of ['pointerdown','pointermove','pointerup'])child.addEventListener(type,e=>e.stopPropagation());
+    surface.append(child);
+  });
   const panes=await page.evaluate(()=>{
     const host=window.__illustroPerformance.probe().renderer,p=host.viewportScene.standby;
     return {mode:p.mode,ready:p.ready,inkCount:host.viewportScene.inkPlane.children.length};
@@ -102,6 +129,9 @@ try{
    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[first,second]});
    assert.equal(await page.locator('.surface').getAttribute('data-interaction-mode'),'navigation',backend+' second finger transfers exclusive ownership to navigation');
    const start=await state();
+   // This is an actual screenshot, not an inspection of the style transform.
+   // Merely updating CanvasView or setting matrix(...) is insufficient.
+   const imageBefore=await page.screenshot({scale:'css'});
    const front=await page.evaluate(()=>{
       const r=window.__illustroPerformance.probe().renderer;
       const standby=r.viewportScene.standby;
@@ -124,6 +154,9 @@ try{
     ]});
    }
    moving=await state();
+   const imageAfter=await page.screenshot({scale:'css'});
+   const changedPixels=imageDiff(imageBefore,imageAfter,box);
+   assert.ok(changedPixels>900,backend+' artwork pixels must actually move during held GPU work; changed pixels: '+changedPixels);
    const activeGate=await page.evaluate(async()=> (await window.__illustroPerformance.probe().renderer.call('inspect')).gates);
    held=activeGate.held;
    assert.equal(activeGate.navigationHold,true,'formal GPU work must remain suspended while camera is moving');
@@ -134,11 +167,12 @@ try{
    assert.ok(Math.abs(moving.view[6]-before.view[6])>.002,backend+' pinch accepted without formal completion');
    assert.ok(Math.abs(moving.view[7]-before.view[7])>.02,backend+' rotation accepted without formal completion');
    assert.equal(moving.strokes,before.strokes,backend+' a two-finger gesture must not commit an accidental stroke');
-   await fs.writeFile(path.join(path.dirname(output),backend+'-during-held-formal.png'),await page.screenshot({scale:'css'}));
+   await fs.writeFile(path.join(path.dirname(output),backend+'-during-held-formal.png'),imageAfter);
   }finally{
    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]}).catch(()=>{});
    await page.evaluate(()=>window.__illustroPerformance.probe().renderer.call('gate',false)).catch(()=>{});
   }
+  await page.locator('#qa-nested-hit-target').evaluate(node=>node.remove());
   await page.evaluate(()=>window.__illustroPerformance.probe().renderer.drain());
   endState=await state();
   assert.equal(await page.locator('.surface').getAttribute('data-interaction-mode'),'standby',backend+' released gesture returns to standby independent of commit');
