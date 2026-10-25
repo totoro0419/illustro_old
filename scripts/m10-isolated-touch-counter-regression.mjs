@@ -72,29 +72,35 @@ try{
    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
    assert.equal(await frame.locator('#count').textContent(),'0',backend+' touching ended');
 
-   // The earlier GPU-hold test does not stall the editor's main JavaScript.
-   // Here it is deliberately blocked for 1600ms. The sandboxed child document
-   // should keep recognizing contacts in its own execution environment.
-   await page.evaluate(()=>{
-    window.__m10CpuBusy=false;
-    setTimeout(()=>{
-      window.__m10CpuBusy=true;
-      const until=performance.now()+1600;
-      while(performance.now()<until){}
-      window.__m10CpuBusy=false;
-    },80);
+   // Simulate a costly bitmap stream using the *actual* cooperative document
+   // presenter. The work is >1.4 seconds in total, but no individual group
+   // should monopolize the main input event loop.
+   const cooperativeJob=page.evaluate(async()=>{
+    const presentation=window.__illustroPerformance.probe().renderer.documentPresentation;
+    const original=presentation.apply;
+    let groups=0;
+    presentation.apply=()=>{
+     const stop=performance.now()+14;
+     while(performance.now()<stop){}
+     groups++;
+    };
+    try{
+     await presentation.applyCooperatively(Array.from({length:110},()=>null));
+     return groups;
+    }finally{presentation.apply=original;}
    });
-   await new Promise(resolve=>setTimeout(resolve,240));
-   const mainBlockedStarted=Date.now();
+   await new Promise(resolve=>setTimeout(resolve,180));
+   const began=Date.now();
    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[one]});
-   const countWhileMainBlocked=await frame.locator('#count').textContent({timeout:1000});
-   const countElapsed=Date.now()-mainBlockedStarted;
-   assert.equal(countWhileMainBlocked,'1',backend+' touch iframe must count even while parent JS is blocked');
-   assert.ok(countElapsed<1300,backend+' touch iframe cannot wait for the whole 1600ms parent task ('+countElapsed+'ms)');
+   const countDuringBatches=await frame.locator('#count').textContent({timeout:950});
+   const responseMs=Date.now()-began;
+   assert.equal(countDuringBatches,'1',backend+' touch count updates between cooperative uploads');
+   assert.ok(responseMs<950,backend+' touch processing must not wait for the entire 1.5s group stream: '+responseMs+'ms');
    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[one,two]});
-   assert.equal(await frame.locator('#count').textContent({timeout:1000}),'2',backend+' two contacts during main-thread work');
+   assert.equal(await frame.locator('#count').textContent({timeout:950}),'2',backend+' two contacts during cooperative bitmap uploads');
    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-   assert.equal(await frame.locator('#count').textContent({timeout:1000}),'0',backend+' separated iframe releases touch independently');
+   assert.equal(await frame.locator('#count').textContent({timeout:950}),'0',backend+' cooperative stream releases contacts');
+   assert.equal(await cooperativeJob,110,backend+' every bitmap group remains processed in order');
   }finally{
    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]}).catch(()=>{});
    await page.evaluate(()=>window.__illustroPerformance.probe().renderer.call('gate',false)).catch(()=>{});
