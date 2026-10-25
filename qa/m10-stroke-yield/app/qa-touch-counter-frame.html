@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ja"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Illustro independent touch counter</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;touch-action:none;overscroll-behavior:none;
+background:rgba(29,73,160,.045);font-family:system-ui,"Noto Sans JP",sans-serif}
+*{box-sizing:border-box}
+#pad{position:absolute;inset:0;touch-action:none;overscroll-behavior:none;user-select:none;-webkit-user-select:none}
+#view{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);min-width:190px;
+background:rgba(255,255,255,.93);border:2px solid #4167d2;border-radius:15px;
+box-shadow:0 6px 18px #26428244;color:#193259;padding:14px 18px;text-align:center;pointer-events:none}
+#count{font-variant-numeric:tabular-nums;display:block;font-size:84px;line-height:1.1;font-weight:800;color:#254cbe}
+#status{font-size:13px;white-space:nowrap}#details{font:11px/1.35 monospace;white-space:nowrap}
+</style></head><body><div id="pad">
+<div id="view"><div id="status">現在触れている指</div><strong id="count">0</strong><div id="details">指を1本または2本置いてください</div></div>
+</div>
+<script>
+(()=>{
+'use strict';
+const count=document.getElementById('count'),details=document.getElementById('details');
+const pointers=new Set();
+let everTouch=false,activeTouches=0,last='待機中',touchStarts=0,pointerStarts=0;
+let lastUpdate=performance.now();
+function paint(){
+ const n=everTouch?activeTouches:pointers.size;
+ count.textContent=String(n);
+ details.textContent='Touch '+activeTouches+' / Pointer '+pointers.size+' / '+last;
+ document.body.dataset.touchCount=String(n);
+ document.body.dataset.lastTouchUpdate=String(lastUpdate);
+}
+function touched(e){
+ everTouch=true;activeTouches=e.touches.length;
+ if(e.type==='touchstart')touchStarts+=e.changedTouches.length;
+ last=e.type;lastUpdate=performance.now();
+ if(e.cancelable)e.preventDefault();
+ paint();
+}
+for(const type of ['touchstart','touchmove','touchend','touchcancel']){
+ document.addEventListener(type,touched,{capture:true,passive:false});
+}
+for(const type of ['pointerdown','pointermove','pointerup','pointercancel','lostpointercapture']){
+ document.addEventListener(type,e=>{
+  if(e.pointerType!=='touch')return;
+  if(type==='pointerdown'){
+   pointerStarts++;pointers.add(e.pointerId);
+   try{e.target.setPointerCapture(e.pointerId)}catch{}
+  }else if(type!=='pointermove')pointers.delete(e.pointerId);
+  last=type;lastUpdate=performance.now();paint();
+ },{capture:true});
+}
+addEventListener('blur',()=>{pointers.clear();activeTouches=0;last='blur';lastUpdate=performance.now();paint();});
+paint();
+})();
+</script></body></html>
