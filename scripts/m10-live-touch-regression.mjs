@@ -83,7 +83,9 @@ try{
    pending=await state();
    assert.equal(pending.inputFirst,true,'cooperative presentation must run in ordinary app, not just QA mode');
    assert.ok(pending.logicalStrokes>=1,backend+' stroke recorded while GPU picture waits');
-   assert.equal((await renderer()).gates.held,'formal',backend+' real formal work held');
+   const gateAfterRecord=(await renderer()).gates;
+   console.log(backend,'gate-after-record',JSON.stringify(gateAfterRecord));
+   assert.equal(gateAfterRecord.formal,true,backend+' diagnostic GPU hold remains armed');
    // This child deliberately intercepts bubbling events like a misplaced
    // artwork or preview layer. Capture on the fixed .surface must still work.
    await page.evaluate(()=>{
@@ -111,7 +113,9 @@ try{
     ]});
    }
    afterGesture=await state();
-   assert.equal((await renderer()).gates.held,'formal',backend+' actual formal completion remains held while input works');
+   const gateDuringGesture=(await renderer()).gates;
+   console.log(backend,'gate-during-gesture',JSON.stringify(gateDuringGesture));
+   assert.equal(gateDuringGesture.formal,true,backend+' GPU formal hold remains armed during input');
    assert.ok(afterGesture.active,backend+' navigation remains active with two fingers');
    assert.ok(afterGesture.touchEvents>=base.touchEvents+2,backend+' both touchstart events are delivered before formal completion');
    assert.ok(afterGesture.pointerEvents>=base.pointerEvents+2,backend+' pointerdown reaches input surface through nested artwork');
@@ -123,7 +127,9 @@ try{
    await fs.writeFile(path.join(path.dirname(output),backend+'-pending-input.png'),await page.screenshot({scale:'css'}));
    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
    await page.evaluate(()=>document.getElementById('m10-nested-artwork-target').remove());
-   assert.equal((await renderer()).gates.held,'formal',backend+' completed gesture did not ungate formal work');
+   const gateAfterGesture=(await renderer()).gates;
+   console.log(backend,'gate-after-gesture',JSON.stringify(gateAfterGesture));
+   assert.equal(gateAfterGesture.formal,true,backend+' completed gesture did not disable formal GPU gate');
    temporary=await state();
   }finally{
    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]}).catch(()=>{});
