@@ -27,6 +27,7 @@ export class DrawingHost {
     const accepted=m.epoch===this.epoch&&m.version>=this.documentVersion;
     if(accepted){
      this.documentPresentation.apply(m.tiles);this.documentVersion=m.version;
+      this.viewportScene.refreshStandby();
      const coverage=this.pendingCoverage.get(m.version);
      if(!coverage?.covered)this.uncoveredVersion=Math.max(this.uncoveredVersion,m.version);
      this.pendingCoverage.delete(m.version);
@@ -45,6 +46,7 @@ export class DrawingHost {
      if(this.canvas.width!==m.bitmap.width)this.canvas.width=m.bitmap.width;
      if(this.canvas.height!==m.bitmap.height)this.canvas.height=m.bitmap.height;
      this.context.transferFromImageBitmap(m.bitmap);this.presentationView=m.view;this.presentationVersion=m.version;
+      this.viewportScene.refreshStandby();
      this.retireOverlays(m.version);this.reproject();this.syncVisibility();this.releasePreciseWaiters(m.epoch,m.version);
     }else m.bitmap.close();
     this.onPresentation?.({kind:'display-image',at:performance.now(),accepted});
@@ -93,7 +95,7 @@ export class DrawingHost {
   }
   for(const id of m.retired){if(this.pendingRetirements.has(id))continue;const layer=this.layers.get(id);layer?.element.remove();this.layers.delete(id);}
   const originX=this.canvas.offsetLeft,originY=this.canvas.offsetTop;
-  for(const data of m.layers){let layer=this.layers.get(data.id);if(!layer){const element=document.createElement('canvas');element.className='illustro-stroke-overlay';element.setAttribute('aria-hidden','true');Object.assign(element.style,{position:'absolute',pointerEvents:'none',transformOrigin:'0 0',background:'transparent',aspectRatio:'auto'});layer={element,context:element.getContext('2d',{alpha:true})};if(!layer.context){element.remove();data.bitmap.close();this.fault('Transparent stroke preview Canvas2D unavailable');continue;}const next=[...this.layers].filter(([id])=>id>data.id).sort(([a],[b])=>a-b)[0]?.[1];if(next)next.element.before(element);else ([...this.layers].sort(([a],[b])=>a-b).at(-1)?.[1].element??this.canvas).after(element);this.layers.set(data.id,layer);}
+  for(const data of m.layers){let layer=this.layers.get(data.id);if(!layer){const element=document.createElement('canvas');element.className='illustro-stroke-overlay';element.setAttribute('aria-hidden','true');Object.assign(element.style,{position:'absolute',pointerEvents:'none',transformOrigin:'0 0',background:'transparent',aspectRatio:'auto'});layer={element,context:element.getContext('2d',{alpha:true})};if(!layer.context){element.remove();data.bitmap.close();this.fault('Transparent stroke preview Canvas2D unavailable');continue;}const next=[...this.layers].filter(([id])=>id>data.id).sort(([a],[b])=>a-b)[0]?.[1];if(next)next.element.before(element);else this.viewportScene.inkPlane.append(element);this.layers.set(data.id,layer);}
    layer.view=data.view;layer.rect=data.rect;layer.scale=data.scale;layer.polygon=data.polygon;if(layer.element.width!==data.bitmap.width)layer.element.width=data.bitmap.width;if(layer.element.height!==data.bitmap.height)layer.element.height=data.bitmap.height;/* Preview pixels need their original alpha. BitmapRenderer can present an opaque black backing on some mobile compositors. */layer.context.clearRect(0,0,layer.element.width,layer.element.height);layer.context.drawImage(data.bitmap,0,0);data.bitmap.close();
    const [x,y]=data.rect;Object.assign(layer.element.style,{left:originX+x+'px',top:originY+y+'px',width:layer.element.width/data.scale+'px',height:layer.element.height/data.scale+'px',display:this.hiddenStrokeIds.has(data.id)?'none':'block',clipPath:'polygon('+data.polygon.map(p=>(p.x-x)+'px '+(p.y-y)+'px').join(',')+')'});
   }
@@ -131,6 +133,7 @@ export class DrawingHost {
   if(this.presentationView?.length){const from=this.presentationView,[a,b,c,d,e,f]=viewAffine(from,to),x=from[2]/to[2],y=from[3]/to[3];Object.assign(this.canvas.style,{transformOrigin:'0 0',imageRendering:to[13]>.5?'pixelated':'auto',transform:`matrix(${[a*x,b*x,c*y,d*y,e,f].join(',')})`});}
   for(const layer of this.layers.values()){const [a,b,c,d,e,f]=viewAffine(layer.view,to),[x,y]=layer.rect;layer.element.style.imageRendering=to[13]>.5?'pixelated':'auto';layer.element.style.transform=`matrix(${a},${b},${c},${d},${e+a*x+c*y-x},${f+b*x+d*y-y})`;}
  }
+ setInteractionMode(mode){this.viewportScene.setMode(mode);}
  setViewTransform(view){
   const old=this.backend.viewTransform;
   if(old&&view.every((n,i)=>n===old[i]))return;
@@ -139,7 +142,7 @@ export class DrawingHost {
    // No Worker messages, GPU calls or await on the live gesture path.
    this.viewportScene.move(view);
   }else{
-   this.reproject();this.presentation.postMessage({method:'view',view});
+   this.reproject();this.viewportScene.refreshStandby();this.presentation.postMessage({method:'view',view});
    this.send('view',view);this.syncVisibility();
   }
   (this.viewSamples??=[]).push(0);
