@@ -59,7 +59,7 @@ export class StandbyPicture {
   if(this.mode!=='standby'||!this.dirty||this.scheduled!==null||this.running)return;
   const action=()=>{this.scheduled=null;this.capture();};
   if(typeof requestIdleCallback==='function')this.scheduled={kind:'idle',id:requestIdleCallback(action,{timeout:160})};
-  else this.scheduled={kind:'frame',id:requestAnimationFrame(action)};
+  else if(typeof requestAnimationFrame==='function')this.scheduled={kind:'frame',id:requestAnimationFrame(action)};
  }
  cancel(){
   if(!this.scheduled)return;
