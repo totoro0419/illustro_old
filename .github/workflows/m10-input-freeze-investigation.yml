@@ -36,6 +36,8 @@ jobs:
           /tmp/m10-input-test/node_modules/.bin/playwright install --with-deps chromium
       - name: CPU profile actual thick 4000px stroke, touch count and UI tasks
         run: TOUCH_TRACE_EVIDENCE=/tmp/m10-input-freeze/report.json node scripts/m10-input-freeze-investigation.mjs
+      - name: Identify actual touch hit targets under temporary-stroke GPU hold
+        run: HIT_TEST_EVIDENCE=/tmp/m10-input-freeze/hit-test.json node scripts/m10-hit-test-overlay-investigation.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
