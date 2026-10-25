@@ -27,6 +27,13 @@ export class CoreStrokeDocumentPort implements DocumentPort{
       dirtyByRecord.push(dirty.filter(h=>h.tileX>=0&&h.tileY>=0&&h.tileX*CANONICAL_TILE_SIZE<target.width&&h.tileY*CANONICAL_TILE_SIZE<target.height));
     }
     if(!dirtyByRecord[0]?.length)throw new EmptyStrokeError('確定できる線がありません。');
+    // The UI can now process gestures/history between preparation chunks.
+    // Revalidate the captured target before starting the single atomic tx.
+    if(this.document.head!==target.baseRevision||this.document.root.documentId!==target.documentId)
+      throw new Error('描画中に作品の状態が変わりました。');
+    const current=this.document.root.getLayer(target.layerId);
+    if(current.kind!=='raster'||current.surface.descriptor.surfaceId!==target.surfaceId||current.locked)
+      throw new Error('描画先のレイヤーが変わりました。');
     const tx=this.document.begin('Brush stroke');
     let operationKey:StrokeCommitResult['operationKey']|null=null,dirtyTileCount=0;
     for(let i=0;i<records.length;i++){const item=records[i]!,dirty=dirtyByRecord[i]!;
