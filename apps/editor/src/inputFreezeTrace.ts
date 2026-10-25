@@ -20,7 +20,7 @@ export function installInputFreezeTrace(){
   pointerEvents:'none',font:'12px/1.5 monospace',maxWidth:'min(360px,90vw)'});
  document.body.append(panel);
  function mark(kind:string,details?:TraceEvent['details']){
-  log.push({at:asTime(getNow()),kind,details});
+  log.push(details===undefined?{at:asTime(getNow()),kind}:{at:asTime(getNow()),kind,details});
   if(log.length>4000)log.shift();
   recentText=kind;
  }
