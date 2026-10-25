@@ -20,8 +20,16 @@ async function draw(){
   b.setViewTransform(v);b.navigationPresentation=false;
   const started=performance.now(),done=b.presentCurrent(true);metrics.renderCpuMaxMs=Math.max(metrics.renderCpuMaxMs,performance.now()-started);
   // Take ownership of the completed backing before yielding a WebGPU task.
-  const bitmap=b.canvas.transferToImageBitmap();try{await done;}catch(error){bitmap.close();throw error;}metrics.frames++;
-  postMessage({type:'image',bitmap,view:v,epoch:contentEpoch,version:generation,performance:{...metrics}},[bitmap]);
+  const bitmap=b.canvas.transferToImageBitmap();
+  // Clone in the display worker, never Canvas2D.drawImage(bitmaprenderer) on
+  // the input thread. Navigation retains a separate already-published image.
+  let standbyBitmap=null;
+  try{standbyBitmap=await createImageBitmap(bitmap);}
+  catch(error){metrics.standbyCloneErrors=(metrics.standbyCloneErrors??0)+1;}
+  try{await done;}catch(error){standbyBitmap?.close();bitmap.close();throw error;}
+  metrics.frames++;
+  postMessage({type:'image',bitmap,standbyBitmap,view:v,epoch:contentEpoch,version:generation,performance:{...metrics}},
+   standbyBitmap?[bitmap,standbyBitmap]:[bitmap]);
  }while(again);
  }catch(error){fail(error);}finally{running=false;}
 }
