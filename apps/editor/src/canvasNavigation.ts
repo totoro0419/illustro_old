@@ -12,7 +12,11 @@ export class CanvasNavigation {
  get active(){return this.gestureActive;}
  get touching(){return this.touches.size>0;}
  get touchCount(){return this.touches.size;}
- private begin(){if(!this.gestureActive){this.gestureActive=true;this.start();}}
+ private begin(){
+  if(this.gestureActive)return;
+  // Failed gesture starts must not leave the input state stuck in navigation.
+  this.start();this.gestureActive=true;
+ }
  private end(){if(this.gestureActive){this.gestureActive=false;this.finish();}}
  private pairOf(){
   const [a,b]=this.touches.values();
@@ -22,28 +26,40 @@ export class CanvasNavigation {
  }
  touchDown(id:number,point:Point,panAllowed:boolean){
   this.touches.set(id,point);
-  if(this.touches.size>=2){this.pan=null;this.pair=this.pairOf();this.begin();}
-  else if(panAllowed){this.pan={id,point};this.begin();}
+  // Finger placement never changes the current image or canvas coordinates.
+  if(this.touches.size>=2){this.pan=null;this.pair=this.pairOf();}
+  else if(panAllowed)this.pan={id,point};
  }
- touchMove(id:number,point:Point){
-  if(!this.touches.has(id))return false;
-  this.touches.set(id,point);
+ private movedEnough(now:{center:Point;distance:number;angle:number},was:{center:Point;distance:number;angle:number}){
+  const drag=Math.hypot(now.center.x-was.center.x,now.center.y-was.center.y);
+  const zoom=Math.abs(now.distance-was.distance)*.5;
+  const rotate=Math.abs(Math.atan2(Math.sin(now.angle-was.angle),Math.cos(now.angle-was.angle)))*was.distance*.5;
+  return Math.max(drag,zoom,rotate)>=3;
+ }
+ touchFrame(points:Iterable<readonly [number,Point]>){
+  let updated=false;
+  for(const [id,point] of points)if(this.touches.has(id)){this.touches.set(id,point);updated=true;}
+  if(!updated)return false;
   if(this.touches.size>=2){
    const next=this.pairOf(),prev=this.pair;
    if(next&&prev){
+    if(!this.active){if(!this.movedEnough(next,prev))return true;this.begin();}
     this.view.zoomAt(next.distance/prev.distance,prev.center);
     this.view.rotateAt(next.angle-prev.angle,prev.center);
     this.view.pan(next.center.x-prev.center.x,next.center.y-prev.center.y);
-    this.changed();
+    this.changed();this.pair=next;
    }
-   this.pair=next;return true;
+   return true;
   }
-  if(this.pan?.id===id){
-   this.view.pan(point.x-this.pan.point.x,point.y-this.pan.point.y);
-   this.pan.point=point;this.changed();return true;
+  if(this.touches.size===1&&this.pan){
+   const point=this.touches.get(this.pan.id);if(!point)return false;
+   const dx=point.x-this.pan.point.x,dy=point.y-this.pan.point.y;
+   if(!this.active){if(Math.hypot(dx,dy)<3)return true;this.begin();}
+   this.view.pan(dx,dy);this.pan.point=point;this.changed();return true;
   }
   return false;
  }
+ touchMove(id:number,point:Point){return this.touchFrame([[id,point]]);}
  touchUp(id:number){
   const wasActive=this.gestureActive;this.touches.delete(id);
   if(this.touches.size>=2){this.pair=this.pairOf();return;}
