@@ -53,7 +53,6 @@ jobs:
           name: m10-real-input-app
           path: apps/editor/dist/
   publish:
-    if: github.event_name == 'push'
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 15
