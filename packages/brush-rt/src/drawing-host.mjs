@@ -14,9 +14,11 @@ export class DrawingHost {
   }catch(error){host.destroy();throw error;}
  }
  constructor(canvas,url,presentationUrl){this.remote=true;
-  // Input-first presentation applies only to opt-in QA. All other builds
-  // retain PR49's exact display and camera behavior.
-  this.inputFirstProbe=typeof location!=='undefined'&&new URLSearchParams(location.search).get('touchProbe')==='1';
+  // Split retained document uploads into browser tasks in the real editor.
+  // The temporary stroke stays visible until all exact tiles are installed.
+  // This must not be gated on a QA URL: real touch inputs need CPU time while
+  // the previous stroke is still waiting for formal GPU presentation.
+  this.inputFirstProbe=true;
   this.pendingDocumentInstall=Promise.resolve();
   this.preferRetainedDocument=false;
   this.canvas=canvas;this.context=canvas.getContext('bitmaprenderer');if(!this.context)throw Error('ImageBitmap presentation unavailable');this.uploadSamples=[];this.viewportScene=new ViewportScene(canvas);
