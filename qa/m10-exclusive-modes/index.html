@@ -1,0 +1,21 @@
+<!doctype html><html lang="ja">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Illustro M10 — 3つの操作モード検証</title>
+<style>
+body{font:16px/1.75 system-ui,"Noto Sans JP",sans-serif;color:#25334a;background:#f1f4f9;max-width:720px;margin:28px auto;padding:0 16px}
+main{background:white;border:1px solid #dfe5ee;border-radius:18px;padding:22px}a{color:#2f58bb}
+.start{display:inline-block;padding:12px 20px;border-radius:12px;background:#345dcc;color:white;text-decoration:none}
+li{margin:9px 0}
+</style></head><body><main>
+<h1>待機・描画・操作を分離した確認版</h1>
+<p>描画とキャンバス操作は同時には実行しません。ペンを離すと、線の正式反映が終わる前でも待機モードへ戻ります。</p>
+<p><a class="start" href="./app/#home">確認版のIllustroを開く</a></p>
+<ol>
+<li>Gペンで太い線を描き、ペンを離した直後、「線を作品に反映しました」の表示を待たずに2本指で移動・拡大・回転する</li>
+<li>キャンバスを動かしている最中に描画用の余計な線が生まれない</li>
+<li>ペンを置いて描いている間は、別の指が触れても同時にキャンバス移動へ切り替わらない</li>
+<li>2本指操作を終了したら、すぐ次の線を描ける</li>
+<li>以前の修正（仮線の透明表示、背景色、Undo/Redo、保存）に問題がない</li>
+</ol>
+<p>※この版は操作状態の分離を検証するものです。物理端末の重い処理で画面が止まらないことは、実機確認が必要です。</p>
+</main></body></html>

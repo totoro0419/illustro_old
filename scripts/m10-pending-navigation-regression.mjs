@@ -58,11 +58,13 @@ try{
   });
   // A settled stroke is already present before the next formal GPU job.
   await draw(11,.39);
+  assert.equal(await page.locator('.surface').getAttribute('data-interaction-mode'),'standby',backend+' returns to standby immediately after input ends');
   await page.evaluate(async()=>{const probe=window.__illustroPerformance.probe();await probe.renderer.drain();});
   const seeded=await state();
   assert.ok(seeded.strokes>=1,backend+' seed stroke committed');
   await page.evaluate(()=>window.__illustroPerformance.probe().renderer.call('gate','formal'));
   await draw(12,.56);
+  assert.equal(await page.locator('.surface').getAttribute('data-interaction-mode'),'standby',backend+' formal GPU pending does not block standby');
   await page.waitForFunction(async()=>{
    const r=window.__illustroPerformance.probe().renderer;
    return (await r.call('inspect')).gates.held==='formal';
@@ -74,7 +76,9 @@ try{
   let moving,endState,held;
   try{
    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[first]});
+   assert.equal(await page.locator('.surface').getAttribute('data-interaction-mode'),'drawing',backend+' first finger is drawing, never navigation simultaneously');
    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[first,second]});
+   assert.equal(await page.locator('.surface').getAttribute('data-interaction-mode'),'navigation',backend+' second finger transfers exclusive ownership to navigation');
    const start=await state();
    assert.equal(start.active,true,'second finger activates navigation immediately');
    const startGate=await page.evaluate(async()=> (await window.__illustroPerformance.probe().renderer.call('inspect')).gates);
@@ -106,6 +110,7 @@ try{
   }
   await page.evaluate(()=>window.__illustroPerformance.probe().renderer.drain());
   endState=await state();
+  assert.equal(await page.locator('.surface').getAttribute('data-interaction-mode'),'standby',backend+' released gesture returns to standby independent of commit');
   const endGate=await page.evaluate(async()=> (await window.__illustroPerformance.probe().renderer.call('inspect')).gates);
   assert.equal(endGate.navigationHold,false,'drawing worker resumes exact formal publication after fingers release');
   assert.equal(endState.active,false,'navigation ended after fingers released');
