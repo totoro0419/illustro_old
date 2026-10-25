@@ -110,16 +110,16 @@ export class BrushSurface{
   screenToDocument(point:Point){return this.view?.document(point)??point;}
   get canChangeGeometry(){return !this.busy&&!!this.renderer;}
   get displayDiagnostics(){const r=this.layoutRect();return {document:{width:this.controller.document.root.width,height:this.controller.document.root.height},css:{width:r.width,height:r.height},backing:{width:this.canvas.width,height:this.canvas.height},dpr:window.devicePixelRatio,view:this.viewState};}
-  fitView(){if(this.view){this.view.fit();this.updateView(true);}}
-  viewAt100(){if(this.view){this.view.setZoom(1);this.updateView(true);}}
-  actualPixels(){if(this.view){this.view.setZoom(1/(window.devicePixelRatio||1));this.updateView(true);}}
-  zoomView(factor:number){if(this.view){this.view.zoomAt(factor,{x:this.view.cssWidth/2,y:this.view.cssHeight/2});this.updateView(true);}}
-  resetRotation(){if(this.view){this.view.setRotation(0);this.updateView(true);}}
-  flipView(axis:'x'|'y'){if(this.view){this.view.toggleFlip(axis);this.updateView(true);}}
-  setViewZoom(zoom:number,notify=true){if(this.view){this.view.setZoom(zoom);this.updateView(notify);}}
-  setViewRotation(angle:number,notify=true){if(this.view){this.view.setRotation(angle);this.updateView(notify);}}
-  setSeamless(enabled:boolean){if(this.view){this.view.seamless=enabled;this.updateView(true);}}
-  setReferencePattern(enabled:boolean){if(this.view){this.view.reference=enabled;this.updateView(true);}}
+  fitView(){if(this.view&&!this.interaction.isDrawing){this.view.fit();this.updateView(true);}}
+  viewAt100(){if(this.view&&!this.interaction.isDrawing){this.view.setZoom(1);this.updateView(true);}}
+  actualPixels(){if(this.view&&!this.interaction.isDrawing){this.view.setZoom(1/(window.devicePixelRatio||1));this.updateView(true);}}
+  zoomView(factor:number){if(this.view&&!this.interaction.isDrawing){this.view.zoomAt(factor,{x:this.view.cssWidth/2,y:this.view.cssHeight/2});this.updateView(true);}}
+  resetRotation(){if(this.view&&!this.interaction.isDrawing){this.view.setRotation(0);this.updateView(true);}}
+  flipView(axis:'x'|'y'){if(this.view&&!this.interaction.isDrawing){this.view.toggleFlip(axis);this.updateView(true);}}
+  setViewZoom(zoom:number,notify=true){if(this.view&&!this.interaction.isDrawing){this.view.setZoom(zoom);this.updateView(notify);}}
+  setViewRotation(angle:number,notify=true){if(this.view&&!this.interaction.isDrawing){this.view.setRotation(angle);this.updateView(notify);}}
+  setSeamless(enabled:boolean){if(this.view&&!this.interaction.isDrawing){this.view.seamless=enabled;this.updateView(true);}}
+  setReferencePattern(enabled:boolean){if(this.view&&!this.interaction.isDrawing){this.view.reference=enabled;this.updateView(true);}}
   private sample(e:PointerEvent):Sample{const v=this.view,d=v?v.document(this.pointerLocation(e)):this.pointerLocation(e);return {x:d.x-(this.wrapOrigin?.x??0),y:d.y-(this.wrapOrigin?.y??0),t:e.timeStamp,...nativeBrushSensors(e)};}
   private down=(e:PointerEvent)=>{if(!this.view||!this.session||!this.preset||e.target!==this.canvas&&e.target!==this.inputViewport)return;
     if(this.eyedropper){if(e.button!==0||this.eyedropperPointer!==null)return;e.preventDefault();this.eyedropperPointer=e.pointerId;this.inputViewport.setPointerCapture(e.pointerId);this.queueSample(this.screenToDocument(this.pointerLocation(e)),'preview');return;}
