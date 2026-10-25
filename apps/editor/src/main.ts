@@ -1,3 +1,4 @@
+import {installPassiveTouchProbe} from './passiveTouchProbe';
 import {HistoryNavigation,type HistoryDirection} from './historyNavigation';
 import {namedSnapshot,type WorkEntry} from './persistence/workLibrary';
 import './style.css';
@@ -31,6 +32,8 @@ const qaMode=new URLSearchParams(location.search).get('qa')==='1'||qaPath.endsWi
 const qaStartedAt=new Date().toISOString();
 const app=document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML=shellMarkup(qaMode,qaMode?(m09Mode?qaM09Markup():m08Mode?qaM08Markup():qaMarkup()):'');
+// Read-only TouchEvent/PointerEvent logger in opt-in QA builds. No gesture changes.
+installPassiveTouchProbe();
 // In M08 the GPU canvas is the entire interaction viewport, not a fixed paper rectangle.
 if(m08Mode)document.body.classList.add('m08-canvas-viewport');
 if(m08Mode||!qaMode)document.body.classList.add('canvas-viewport');
