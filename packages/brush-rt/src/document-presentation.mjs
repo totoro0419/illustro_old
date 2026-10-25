@@ -22,6 +22,20 @@ export class DocumentPresentation {
    group.context.transferFromImageBitmap(data.bitmap);
   }
  }
+ // QA input-first presentation: yield between groups rather than submitting
+ // every bitmap transfer in one uninterruptible main-thread task. The worker
+ // still renders full-accuracy pixels and confirms the exact same version.
+ async applyCooperatively(groups){
+  const groupCount=groups.length;
+  for(let i=0;i<groupCount;i++){
+   this.apply([groups[i]]);
+   if(i+1<groupCount){
+    // A new macrotask gives queued touchstart and pointerdown a chance to run.
+    // requestAnimationFrame can itself starve when the GPU is busy.
+    await new Promise(resolve=>setTimeout(resolve,0));
+   }
+  }
+ }
  update(view){if(!view)return;this.element.style.display=view[12]>.5||view[14]>.5?'none':'block';this.element.style.imageRendering=view[13]>.5?'pixelated':'auto';this.element.style.transform='matrix('+viewAffine(this.view,view).join(',')+')';}
  destroy(){for(const group of this.tiles.values())group.element.width=group.element.height=1;this.tiles.clear();this.element.remove();this.bytes=0;}
 }

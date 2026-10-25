@@ -13,7 +13,13 @@ export class DrawingHost {
    host.presentation.postMessage({method:'init',width:canvas.width,height:canvas.height,documentWidth:width,documentHeight:height,backend:host.info.selection.selected});await host.presentationReady;return host;
   }catch(error){host.destroy();throw error;}
  }
- constructor(canvas,url,presentationUrl){this.remote=true;this.canvas=canvas;this.context=canvas.getContext('bitmaprenderer');if(!this.context)throw Error('ImageBitmap presentation unavailable');this.uploadSamples=[];this.viewportScene=new ViewportScene(canvas);
+ constructor(canvas,url,presentationUrl){this.remote=true;
+  // Input-first presentation applies only to opt-in QA. All other builds
+  // retain PR49's exact display and camera behavior.
+  this.inputFirstProbe=typeof location!=='undefined'&&new URLSearchParams(location.search).get('touchProbe')==='1';
+  this.pendingDocumentInstall=Promise.resolve();
+  this.preferRetainedDocument=false;
+  this.canvas=canvas;this.context=canvas.getContext('bitmaprenderer');if(!this.context)throw Error('ImageBitmap presentation unavailable');this.uploadSamples=[];this.viewportScene=new ViewportScene(canvas);
   this.presentation=new Worker(presentationUrl,{type:'module'});this.presentationRequests=new Map;this.presentationRequestId=0;this.presentationVersion=0;this.preciseWaiters=[];this.uncoveredVersion=0;this.pendingCoverage=new Map;this.pendingRetirements=new Map;
   this.display={backend:{readViewport:()=>new Promise((resolve,reject)=>{const request=++this.presentationRequestId;this.presentationRequests.set(request,{resolve,reject,read:true});this.presentation.postMessage({method:'read',request});})}};
   this.presentationReady=new Promise((resolve,reject)=>{this.presentationResolve=resolve;this.presentationReject=reject;});
@@ -23,18 +29,66 @@ export class DrawingHost {
    if(m.type==='fault'){this.presentationReject(Error(m.error));this.fault(m.error);return;}
    if(m.type==='document'){
     const accepted=m.epoch===this.epoch&&m.version>=this.documentVersion;
-    if(accepted){
-     this.documentPresentation.apply(m.tiles);this.documentVersion=m.version;
-     const coverage=this.pendingCoverage.get(m.version);
-     if(!coverage?.covered)this.uncoveredVersion=Math.max(this.uncoveredVersion,m.version);
-     this.pendingCoverage.delete(m.version);
-     this.documentPresentation.update(this.viewportScene.baseView??this.backend.viewTransform);
-     this.syncVisibility();
-    }else for(const t of m.tiles)t.bitmap.close();
-    const request=this.presentationRequests.get(m.request);this.presentationRequests.delete(m.request);request?.resolve({accepted});return;
+    const complete=()=>{
+     if(accepted&&!this.disposed){
+      this.documentVersion=m.version;
+      const coverage=this.pendingCoverage.get(m.version);
+      if(!coverage?.covered)this.uncoveredVersion=Math.max(this.uncoveredVersion,m.version);
+      this.pendingCoverage.delete(m.version);
+      this.documentPresentation.update(this.viewportScene.baseView??this.backend.viewTransform);
+      this.syncVisibility();
+     }
+     const request=this.presentationRequests.get(m.request);
+     this.presentationRequests.delete(m.request);
+     request?.resolve({accepted:accepted&&!this.disposed});
+    };
+    if(!accepted){for(const t of m.tiles)t.bitmap.close();complete();return;}
+    if(this.inputFirstProbe){
+     // Avoid a long sequence of bitmap uploads on the touch event thread.
+     // Each group is exact. ACK only after all groups are installed.
+     this.pendingDocumentInstall=this.pendingDocumentInstall.then(async()=>{
+      if(this.disposed||m.epoch!==this.epoch){
+       for(const t of m.tiles)t.bitmap.close();
+       const request=this.presentationRequests.get(m.request);
+       this.presentationRequests.delete(m.request);request?.resolve({accepted:false});
+       return;
+      }
+      await this.documentPresentation.applyCooperatively(m.tiles);
+      complete();
+     }).catch(error=>{
+      const request=this.presentationRequests.get(m.request);
+      this.presentationRequests.delete(m.request);request?.reject(error);
+      this.fault(String(error));
+     });
+     return;
+    }
+    this.documentPresentation.apply(m.tiles);complete();return;
    }
    if(m.type==='read'){const r=this.presentationRequests.get(m.request);this.presentationRequests.delete(m.request);r?.resolve(m.pixels);return;}
    if(m.type==='image'){this.presentationMetrics=m.performance;
+    if(this.inputFirstProbe&&!this.viewportScene.active&&m.view?.[12]<.5&&m.view?.[14]<.5){
+     // A complete retained document is an accurate ordinary-paper picture.
+     // Prefer it to uploading a second full GPU bitmap to the main thread.
+     void this.pendingDocumentInstall.then(()=>{
+      if(this.disposed){m.bitmap.close();return;}
+      const stillValid=m.epoch===this.epoch&&m.version>=this.presentationVersion;
+      if(!stillValid){m.bitmap.close();return;}
+      const retainedReady=m.version<=this.documentVersion&&this.documentPresentation.tiles.size>0;
+      if(retainedReady){m.bitmap.close();this.preferRetainedDocument=true;}
+      else{
+       if(this.canvas.width!==m.bitmap.width)this.canvas.width=m.bitmap.width;
+       if(this.canvas.height!==m.bitmap.height)this.canvas.height=m.bitmap.height;
+       this.context.transferFromImageBitmap(m.bitmap);
+       this.preferRetainedDocument=false;
+      }
+      this.presentationView=m.view;this.presentationVersion=m.version;
+      this.retireOverlays(m.version);this.reproject();this.syncVisibility();
+      this.releasePreciseWaiters(m.epoch,m.version);
+      this.onPresentation?.({kind:'display-image',at:performance.now(),accepted:true});
+     }).catch(error=>this.fault(String(error)));
+     return;
+    }
+    this.preferRetainedDocument=false;
     if(this.viewportScene.active){m.bitmap.close();return;}
     const accepted=m.epoch===this.epoch&&m.version>=this.presentationVersion&&m.version>=this.documentVersion;
     if(accepted){
@@ -121,7 +175,7 @@ export class DrawingHost {
    ((v[12]>.5)!==(this.presentationView[12]>.5)||(v[14]>.5)!==(this.presentationView[14]>.5));
   // Keep the precise M08 image visible if the latest stroke is fully covered
   // by its temporary ink. Only unrepresented edits require the fallback scene.
-  this.canvas.style.opacity=modeChanged||ordinary&&this.presentationVersion<this.uncoveredVersion?'0':'1';
+  this.canvas.style.opacity=this.preferRetainedDocument&&ordinary||modeChanged||ordinary&&this.presentationVersion<this.uncoveredVersion?'0':'1';
  }
  reproject(){const to=this.viewportScene.baseView??this.backend.viewTransform;if(!to)return;this.documentPresentation?.update(to);
   if(this.presentationView?.length){const from=this.presentationView,[a,b,c,d,e,f]=viewAffine(from,to),x=from[2]/to[2],y=from[3]/to[3];Object.assign(this.canvas.style,{transformOrigin:'0 0',imageRendering:to[13]>.5?'pixelated':'auto',transform:`matrix(${[a*x,b*x,c*y,d*y,e,f].join(',')})`});}
