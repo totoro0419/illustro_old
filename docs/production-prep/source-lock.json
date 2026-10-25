@@ -458,7 +458,7 @@
     },
     {
       "path": "packages/brush-rt/src/drawing-host.mjs",
-      "sha256": "848e249cc63498e8ffbfd6d1bb4ca7662bb46cf3819e02626d6bbccd83737e06",
+      "sha256": "ab720ff9453cacd4a81374516600dad7e6062efb5533c932c879991eab086f3c",
       "presentationRebuildException": "User-authorized document-tile publication and independent input/raster/display roles. Requires full-byte transfer/reveal, M08/brush, history/save/reopen and matched performance tests. Physical acceptance UNVERIFIED.",
       "baseCommit": "8fa3857b5ce8deb4dadacce45f06e121a16e8d85",
       "sourceBranch": "rebuild/M10-presentation-correctness-2026-10-21",
@@ -470,7 +470,8 @@
       "regressionRepair": "M10 previous run #39597604396: hide stale reference framebuffer on ordinary view; immediately redraw view changes; preserve responsive 1-job foreground but allow grouped draining of >512 queued idle formal jobs, without changing stroke record/pixels/history.",
       "navigationSceneRebuild": "Replaced navigation-time bitmap/view worker requests and per-layer reproject with one DOM compositor scene transform. Commit is not proof of device responsiveness; gesture blocking experiment required.",
       "previewAlphaException": "PR49 temporary stroke preview compositor uses alpha-enabled Canvas2D drawImage instead of mobile BitmapRenderer; formal GPU pipeline, stroke geometry, 128px history, persistence unchanged. Requires WebGL2/WebGPU temporary overlay alpha, pending formal confirmation screenshot, original regressions and physical mobile verification.",
-      "gestureGpuYieldException": "User-directed M10 responsiveness repair: freeze new formal GPU submits and defer main-thread bitmap installation while user is moving the canvas; resume exact pending work after gesture. Formal stroke batches stay small while unfinished ink is visible. Stroke geometry, GPU deposit pixels, accepted samples, undo and portable saving format unchanged. Verify GPU backends, pending publication, accurate full pixels, touch gestures, background and transparency regressions. Physical tablet/phone verification required."
+      "gestureGpuYieldException": "User-directed M10 responsiveness repair: freeze new formal GPU submits and defer main-thread bitmap installation while user is moving the canvas; resume exact pending work after gesture. Formal stroke batches stay small while unfinished ink is visible. Stroke geometry, GPU deposit pixels, accepted samples, undo and portable saving format unchanged. Verify GPU backends, pending publication, accurate full pixels, touch gestures, background and transparency regressions. Physical tablet/phone verification required.",
+      "standbyRetainedPictureException": "User-authorized separate retained standby frame and pending-ink plane on existing drawing host. Foreground navigation must transform the standalone standby picture with unfinished ink even while GPU commit is pending. Does not alter pixel deposition, history, save format. Mobile acceptance unverified; both backends and 4k pending stroke regression required."
     },
     {
       "path": "packages/brush-rt/src/drawing.worker.mjs",
