@@ -1,0 +1,79 @@
+name: M10 Live Touch During Pending Formal Stroke
+on:
+  push:
+    branches: ['fix/M10-live-touch-during-pending-2026-10-25']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      EXPECTED_COMMIT_SHA: ${{ github.sha }}
+      RT_PLAYWRIGHT_PATH: /tmp/m10-live-playwright/node_modules/playwright
+      RT_PNG_PATH: /tmp/m10-live-playwright/node_modules/pngjs
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify core brush editor and compiled runtime
+        run: |
+          npm run brush:build
+          npm run prep:check
+          npm run core:check
+          npm run brush:regression
+          npm --workspace @illustro/editor exec -- vitest run
+          npm --workspace @illustro/editor exec -- tsc --noEmit
+          VITE_COMMIT_SHA="$GITHUB_SHA" npm --workspace @illustro/editor exec -- vite build --base=./
+      - name: Install browser for actual input and screenshot checks
+        run: |
+          npm install --prefix /tmp/m10-live-playwright playwright@1.56.1 pngjs@7.0.0 --no-audit --no-fund
+          /tmp/m10-live-playwright/node_modules/.bin/playwright install --with-deps chromium
+      - name: Touch input and actual canvas pan zoom rotation while GPU pending
+        run: M10_LIVE_TOUCH_EVIDENCE=/tmp/m10-live-touch-evidence/report.json node scripts/m10-live-touch-regression.mjs
+      - name: No black preview rectangles on either GPU
+        run: PREVIEW_ALPHA_EVIDENCE=/tmp/m10-live-touch-evidence/alpha/report.json node scripts/m10-preview-alpha-regression.mjs
+      - name: Viewport background color and navigation regression
+        run: SURROUND_EVIDENCE=/tmp/m10-live-touch-evidence/surround/report.json node scripts/m10-fixed-surround-regression.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m10-live-touch-evidence
+          path: /tmp/m10-live-touch-evidence/
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: m10-live-touch-app
+          path: apps/editor/dist/
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: site
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: m10-live-touch-app
+          path: site/qa/m10-live-touch/app
+      - name: Publish isolated preview without overwriting previous QA
+        run: |
+          mkdir -p site/qa/m10-live-touch
+          cp qa/m10-live-touch/index.html site/qa/m10-live-touch/index.html
+          cd site
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add qa/m10-live-touch
+          test -z "$(git diff --cached --name-only | sed '/^qa\/m10-live-touch\//d')"
+          git diff --cached --quiet || git commit -m "qa: live touch while formal stroke pending $GITHUB_SHA"
+          git pull --rebase origin gh-pages
+          git push origin HEAD:gh-pages
