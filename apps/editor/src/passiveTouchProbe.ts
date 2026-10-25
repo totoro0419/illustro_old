@@ -1,3 +1,4 @@
+import {installIsolatedTouchFrame} from './isolatedTouchFrame';
 /**
  * QA-only raw contact diagnostic. Canvas rendering/navigation/stroke logic is
  * untouched. Optional dedicated contact layer intentionally blocks painting
@@ -6,6 +7,7 @@
 export function installPassiveTouchProbe():void{
  const params=new URLSearchParams(location.search);
  if(params.get('touchProbe')!=='1')return;
+ if(params.get('captureTouch')==='isolated'){installIsolatedTouchFrame();return;}
  const wantDirect=params.get('captureTouch')==='1';
  const output=document.createElement('output');
  output.id='illustro-passive-touch-probe';
