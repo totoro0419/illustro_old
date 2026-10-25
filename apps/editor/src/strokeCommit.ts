@@ -44,12 +44,12 @@ export class CoreStrokeDocumentPort implements DocumentPort{
 }
 async function shallowRecordGuard(record:StrokeRecord){
   if((record.version!==2&&record.version!==3)||record.random!=='philox4x32-10'||!Array.isArray(record.commands)||!Array.isArray(record.raw)||record.raw.length>500000)throw new Error('未対応の線データです。');
-  let sliceStarted=performance.now();
+  let sliceStarted=performance.now(),lastYieldAt=0;
   for(let i=0;i<record.raw.length;i++){
     if(record.raw[i]?.predicted)throw new Error('予測入力は作品データに確定できません。');
-    if((i&255)===255&&performance.now()-sliceStarted>=3){
+    if((i&255)===255&&(performance.now()-sliceStarted>=3||i-lastYieldAt>=2048)){
       await new Promise<void>(resolve=>setTimeout(resolve,0));
-      sliceStarted=performance.now();
+      sliceStarted=performance.now();lastYieldAt=i;
     }
   }
   if('releaseInput' in record&&record.releaseInput?.predicted)throw new Error('予測入力は作品データに確定できません。');
@@ -57,16 +57,16 @@ async function shallowRecordGuard(record:StrokeRecord){
 function brushId(record:StrokeRecord){return record.version===3?record.foundation.id:record.preset.id;}
 async function dirtyTiles(record:StrokeRecord):Promise<DirtyTileHint[]>{
   const map=new Map<string,Accum>();
-  let sliceStarted=performance.now();
+  let sliceStarted=performance.now(),lastYieldAt=0;
   for(let index=0;index<record.commands.length;index++){const c=record.commands[index];if(!c||c.length<20)throw new Error('壊れた線データです。');
     const required=[c[0],c[1],c[2],c[16],c[17],c[18],c[19]];if(required.some(v=>v===undefined||!Number.isFinite(v)))throw new Error('壊れた線データです。');
     const solid=(c[19]??0)>0,r=Math.max((c[2]??0)/2,c[18]??0)*(solid?1:Math.SQRT2)+2,ax=solid?(c[16]??c[0]??0):(c[0]??0),ay=solid?(c[17]??c[1]??0):(c[1]??0);
     addBounds(map,{x0:Math.min(c[0]??0,ax)-r,y0:Math.min(c[1]??0,ay)-r,x1:Math.max(c[0]??0,ax)+r,y1:Math.max(c[1]??0,ay)+r},index);
     // A single long brush stroke can contain thousands of stamps. The
     // accumulated bounds remain identical; only scheduling is different.
-    if((index&63)===63&&performance.now()-sliceStarted>=3){
+    if((index&63)===63&&(performance.now()-sliceStarted>=3||index-lastYieldAt>=256)){
       await new Promise<void>(resolve=>setTimeout(resolve,0));
-      sliceStarted=performance.now();
+      sliceStarted=performance.now();lastYieldAt=index;
     }
   }
   const result:DirtyTileHint[]=[];
