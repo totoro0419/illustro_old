@@ -13,12 +13,33 @@ export class DrawingHost {
    host.presentation.postMessage({method:'init',width:canvas.width,height:canvas.height,documentWidth:width,documentHeight:height,backend:host.info.selection.selected});await host.presentationReady;return host;
   }catch(error){host.destroy();throw error;}
  }
- constructor(canvas,url,presentationUrl){this.remote=true;this.canvas=canvas;this.context=canvas.getContext('bitmaprenderer');if(!this.context)throw Error('ImageBitmap presentation unavailable');this.uploadSamples=[];this.viewportScene=new ViewportScene(canvas);
+ constructor(canvas,url,presentationUrl){this.remote=true;
+  const params=typeof location!=='undefined'?new URLSearchParams(location.search):new URLSearchParams();
+  this.m10Mode=params.get('touchProbe')==='1'?params.get('ablate'):null;
+  this.m10PublicationPaused=false;
+  this.m10PenUp=event=>{
+   if(this.m10Mode!=='presentation'||event.button!==0)return;
+   const surface=canvas.closest('.surface');
+   if(event.target!==canvas&&event.target!==surface)return;
+   this.m10PublicationPaused=true;
+  };
+  if(this.m10Mode==='presentation')window.addEventListener('pointerup',this.m10PenUp,{capture:true});
+  this.canvas=canvas;this.context=canvas.getContext('bitmaprenderer');if(!this.context)throw Error('ImageBitmap presentation unavailable');this.uploadSamples=[];this.viewportScene=new ViewportScene(canvas);
   this.presentation=new Worker(presentationUrl,{type:'module'});this.presentationRequests=new Map;this.presentationRequestId=0;this.presentationVersion=0;this.preciseWaiters=[];this.uncoveredVersion=0;this.pendingCoverage=new Map;this.pendingRetirements=new Map;
   this.display={backend:{readViewport:()=>new Promise((resolve,reject)=>{const request=++this.presentationRequestId;this.presentationRequests.set(request,{resolve,reject,read:true});this.presentation.postMessage({method:'read',request});})}};
   this.presentationReady=new Promise((resolve,reject)=>{this.presentationResolve=resolve;this.presentationReject=reject;});
   this.presentation.onmessage=({data:m})=>{
    if(this.disposed){m.bitmap?.close();for(const t of m.tiles??[])t.bitmap.close();return;}
+    if(this.m10Mode==='presentation'&&this.m10PublicationPaused&&(m.type==='document'||m.type==='image')){
+     // Diagnostic only: stop ALL main-thread formal bitmap installation after
+     // pen-up. Release transferable resources and settle the worker request.
+     m.bitmap?.close();for(const t of m.tiles??[])t.bitmap.close();
+     if(m.type==='document'){
+      const req=this.presentationRequests.get(m.request);
+      this.presentationRequests.delete(m.request);req?.resolve({accepted:false});
+     }
+     return;
+    }
    if(m.type==='ready'){this.presentationResolve();return;}
    if(m.type==='fault'){this.presentationReject(Error(m.error));this.fault(m.error);return;}
    if(m.type==='document'){
@@ -65,7 +86,17 @@ export class DrawingHost {
   this.proxy.error=s.proxy.error;const sessionId=this.session.id;Object.assign(this.session,s.session);this.session.id=Math.max(sessionId,s.session.id);if(s.tiles)this.backend.tiles=new Map(s.tiles.map(t=>[t.surfaceKey+'\u0000'+t.key,t]));
   if(s.recordIds)for(const [token,id]of s.recordIds){const r=this.session.recordsByToken.get(token);if(r&&id!==undefined)this.session.recordIds.set(r,id);}
  }
- async picture(m){if(m.sequence<=this.sequence||m.epoch!==this.epoch){closePicture(m);this.send('pictureAck',{sequence:m.sequence,accepted:false});return;}this.sequence=m.sequence;
+ async picture(m){
+  if(this.m10Mode==='presentation'&&this.m10PublicationPaused){
+   closePicture(m);this.sequence=Math.max(this.sequence,m.sequence);
+   this.send('pictureAck',{sequence:m.sequence,accepted:true});
+   return;
+  }
+  if(this.m10Mode==='overlay'&&m.layers?.length){
+   for(const layer of m.layers)layer.bitmap.close();
+   m.layers=[];
+  }
+  if(m.sequence<=this.sequence||m.epoch!==this.epoch){closePicture(m);this.send('pictureAck',{sequence:m.sequence,accepted:false});return;}this.sequence=m.sequence;
   // The browser paints after this task, so the exact base swap and retirement
   // of its corresponding CPU pictures are one visible change.
   if(m.pages?.length){
@@ -169,7 +200,7 @@ export class DrawingHost {
  performanceSummary(){const samples=this.viewSamples??[],sorted=[...samples].sort((a,b)=>a-b);return {...(this.summary??{}),viewTransforms:samples.length,viewComputeP95Ms:sorted.length?sorted[Math.ceil(sorted.length*.95)-1]:null,displayWorker:this.presentationMetrics??null,retainedDocumentTiles:this.documentPresentation?.tiles.size??0,retainedDocumentGroups:this.documentPresentation?.tiles.size??0,deferredStrokePictures:this.pendingRetirements.size,retainedDocumentBytes:this.documentPresentation?.bytes??0};}
  frame(){return false;}
  async inspect(){const state=await this.call('inspect');this.update(state);return state;}
- destroy(){if(this.disposed)return;this.disposed=true;for(const waiter of this.preciseWaiters)waiter.resolve(false);this.preciseWaiters=[];this.pendingCoverage.clear();this.pendingRetirements.clear();this.worker.terminate();for(const request of this.requests.values())request.reject(Error('Drawing host disposed'));this.requests.clear();for(const l of this.layers.values())l.element.remove();this.layers.clear();this.documentPresentation?.destroy();this.presentation.terminate();this.viewportScene.destroy(this.canvas);for(const request of this.presentationRequests.values())request.reject(Error('Display host disposed'));this.presentationRequests.clear();}
+ destroy(){if(this.disposed)return;if(this.m10Mode==='presentation')window.removeEventListener('pointerup',this.m10PenUp,true);this.disposed=true;for(const waiter of this.preciseWaiters)waiter.resolve(false);this.preciseWaiters=[];this.pendingCoverage.clear();this.pendingRetirements.clear();this.worker.terminate();for(const request of this.requests.values())request.reject(Error('Drawing host disposed'));this.requests.clear();for(const l of this.layers.values())l.element.remove();this.layers.clear();this.documentPresentation?.destroy();this.presentation.terminate();this.viewportScene.destroy(this.canvas);for(const request of this.presentationRequests.values())request.reject(Error('Display host disposed'));this.presentationRequests.clear();}
 }
 function closePicture(m){for(const p of m.pages??[])p.bitmap?.close();for(const l of m.layers??[])l.bitmap?.close();}
 

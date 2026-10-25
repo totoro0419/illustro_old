@@ -1,4 +1,5 @@
 import {HistoryNavigation,type HistoryDirection} from './historyNavigation';
+import {ablationMode,installAblationProbe} from './m10Ablation';
 import {namedSnapshot,type WorkEntry} from './persistence/workLibrary';
 import './style.css';
 import './ui/shell.css';
@@ -31,6 +32,8 @@ const qaMode=new URLSearchParams(location.search).get('qa')==='1'||qaPath.endsWi
 const qaStartedAt=new Date().toISOString();
 const app=document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML=shellMarkup(qaMode,qaMode?(m09Mode?qaM09Markup():m08Mode?qaM08Markup():qaMarkup()):'');
+const m10Mode=ablationMode(),m10Probe=installAblationProbe(m10Mode);
+document.body.dataset.m10Ablation=m10Mode;
 // In M08 the GPU canvas is the entire interaction viewport, not a fixed paper rectangle.
 if(m08Mode)document.body.classList.add('m08-canvas-viewport');
 if(m08Mode||!qaMode)document.body.classList.add('canvas-viewport');
@@ -156,9 +159,11 @@ async function createProjectionCheckpoint(){
 function resetCheckpointTracking(){checkpointOperations=[];checkpointOpsSinceLast=0;checkpointNeedsFullSeed=true;lastCheckpointAt=null;if(projectionCheckpointTimer!==null){clearTimeout(projectionCheckpointTimer);projectionCheckpointTimer=null;}}
 function queueLatestCommit(){
   const handoff=controller.lastPersistenceHandoff;if(!handoff||handoff.resultRevisionId===lastQueuedRevision)return;lastQueuedRevision=handoff.resultRevisionId;
-  persistence.noteCommit(controller.document,handoff);if(controller.document.head!==handoff.resultRevisionId)persistence.noteNavigation(controller.document);const revision=controller.document.revision(handoff.resultRevisionId),operations=revision.command?.operations??[];noteCheckpointOperations(operations);
+  if(m10Probe&&m10Mode==='persistence'){m10Probe.mark('persistence-skipped');return;}
+  m10Probe?.mark('persistence-start');
+  persistence.noteCommit(controller.document,handoff);if(controller.document.head!==handoff.resultRevisionId)persistence.noteNavigation(controller.document);const revision=controller.document.revision(handoff.resultRevisionId),operations=revision.command?.operations??[];noteCheckpointOperations(operations);m10Probe?.mark('persistence-end');
 }
-function makeSurface(backendOverride:'webgl2'|'webgpu'|null=null){return new BrushSurface(byId('canvas'),controller,text=>{byId('status').textContent=text;},()=>{queueLatestCommit();renderLayers();updateHistoryButtons();updateQa();},reason=>{if(reason!=='view'&&reason!=='view-command')updatePersistenceDisplay();updateViewControls();redrawCrop();if(reason==='view'){scheduleQaRefresh();return;}updateHistoryButtons();updateQa();},backendOverride,(rgba,phase,point)=>{
+function makeSurface(backendOverride:'webgl2'|'webgpu'|null=null){return new BrushSurface(byId('canvas'),controller,text=>{if(text.includes('作品に反映しました'))m10Probe?.mark('formal-confirmed');byId('status').textContent=text;},()=>{queueLatestCommit();renderLayers();updateHistoryButtons();updateQa();},reason=>{if(reason!=='view'&&reason!=='view-command')updatePersistenceDisplay();updateViewControls();redrawCrop();if(reason==='view'){scheduleQaRefresh();return;}updateHistoryButtons();updateQa();},backendOverride,(rgba,phase,point)=>{
  if(phase==='cancel'){byId('colorSampleLoupe').hidden=true;foreground.cancel();return;}
  if(!rgba||rgba.length<4||rgba[3]===0){if(phase==='commit'){foreground.cancel();byId('status').textContent='透明な場所からは色を取得できません。';restoreDrawingTool();}return;}
  const alpha=(rgba[3]??0)/255,fromComposite=(byId<HTMLSelectElement>('colorSampleSource').value!=='layer');
