@@ -61,6 +61,30 @@ describe('M01 stroke -> Document adapter',()=>{
     const tx=d.begin('lock');tx.setLayerLocked(layer,true);tx.commit();
     expect(()=>port.target()).toThrow(/ロック/);
   });
+  it('does not monopolize the main event loop while indexing a very long stroke',async()=>{
+    const d=new CoreDocument({width:4000,height:4000}),port=new CoreStrokeDocumentPort(d);
+    const commands=Array.from({length:18000},(_,i)=>command(180+i%680,100+(i%500),177+i%680,100+(i%500),8));
+    let inputTimerRan=false;
+    setTimeout(()=>{inputTimerRan=true;},0);
+    const result=await port.commitStroke(port.target(),record(commands));
+    expect(inputTimerRan).toBe(true);
+    expect(d.revisionCount).toBe(2);
+    expect(result.dirtyTileCount).toBeGreaterThan(0);
+    expect(d.currentRevision.command?.operations).toHaveLength(1);
+    const touched=d.getTileValue(d.defaultRasterLayerId,0,0)?.mutations[0]?.commandIndices;
+    expect(touched?.length).toBeGreaterThan(0);
+  });
+  it('yields during lengthy raw-input validation, including predicted-sample rejection',async()=>{
+    const d=new CoreDocument({width:4000,height:4000}),port=new CoreStrokeDocumentPort(d),head=d.head;
+    const raw=Array.from({length:20000},(_,i)=>({x:i/12,y:20,t:i+1,pressure:.4,pointerType:'touch'}));
+    raw[19999]={...raw[19999],predicted:true} as typeof raw[number] & {predicted:true};
+    let inputTimerRan=false;
+    setTimeout(()=>{inputTimerRan=true;},0);
+    await expect(port.commitStroke(port.target(),record([command(200,200)],raw))).rejects.toThrow(/予測入力/);
+    expect(inputTimerRan).toBe(true);
+    expect(d.head).toEqual(head);
+    expect(d.revisionCount).toBe(1);
+  });
   it('indexes distant commands only into tiles they can affect',async()=>{
     const d=new CoreDocument({width:2048,height:512}),port=new CoreStrokeDocumentPort(d),layer=d.defaultRasterLayerId;
     await port.commitStroke(port.target(),record([command(40,60,30,60,6),command(1800,60,1790,60,6)]));
