@@ -46,7 +46,7 @@ export function installPassiveTouchProbe():void{
   const count=activeCount();
   output.textContent=
     '【指の数：'+count+'】\n'+
-    'タッチ実数: '+count+'（1本→1 / 2本→2）\n'+
+    'Touch実数: '+count+'（1本→1 / 2本→2）\n'+
     'Touch: '+touchCount+' / Pointer: '+pointers.size+'\n'+
     'キャンバス内: '+(onCanvas===null?'未準備':onCanvas)+'\n'+
     '開始: '+touchStarts+' / 移動: '+touchMoves+'\n'+
