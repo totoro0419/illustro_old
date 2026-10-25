@@ -74,7 +74,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add qa/m10-exclusive-modes
-          test -z "$(git diff --cached --name-only | sed '/^qa\/m10-gesture-gpu-yield\//d')"
+          test -z "$(git diff --cached --name-only | sed '/^qa\/m10-exclusive-modes\//d')"
           git diff --cached --quiet || git commit -m "qa: exclusive standby/drawing/navigation $GITHUB_SHA"
           git pull --rebase origin gh-pages
           git push origin HEAD:gh-pages
