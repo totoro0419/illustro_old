@@ -86,7 +86,7 @@ export function installPassiveTouchProbe():void{
    pointerStarts++;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
   }else if(type==='pointermove'){
    if(pointers.has(e.pointerId))pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  }else{
+  }else if(pointers.has(e.pointerId)){
    pointerEnds++;pointers.delete(e.pointerId);
   }
   if(!touchSeen)onCanvas=[...pointers.values()].filter(p=>inCanvas(p.x,p.y)).length;
