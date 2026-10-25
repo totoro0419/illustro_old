@@ -127,23 +127,39 @@ try{
    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[first]});
    assert.equal(await page.locator('.surface').getAttribute('data-interaction-mode'),'drawing',backend+' first finger is drawing, never navigation simultaneously');
    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[first,second]});
-   assert.equal(await page.locator('.surface').getAttribute('data-interaction-mode'),'navigation',backend+' second finger transfers exclusive ownership to navigation');
-   const start=await state();
-   // This is an actual screenshot, not an inspection of the style transform.
-   // Merely updating CanvasView or setting matrix(...) is insufficient.
+   // Pressing a finger must NOT switch the displayed image, change pan/zoom or
+   // change the compositor's transform. Tiny sensor movement is also ignored.
+   const pressed=await state();
+   assert.deepEqual(pressed.view,before.view,backend+' no camera motion from finger placement');
+   assert.equal(pressed.active,false,backend+' mere finger placement cannot switch the scene');
+   assert.equal(await page.locator('.surface').getAttribute('data-interaction-mode'),'standby',backend+' touch placement stays in standby');
+   const native=await page.evaluate(()=>document.querySelector('.illustro-gesture-debug')?.textContent??'');
+   if(native)assert.match(native,/Touch実数: 2/,backend+' native touch stream recognizes both fingers while formal GPU is held');
    const imageBefore=await page.screenshot({scale:'css'});
+   const jitter=[{...first,x:first.x+.3,y:first.y+.2},{...second,x:second.x+.5,y:second.y+.4}];
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:jitter});
+   const jittered=await state();
+   assert.deepEqual(jittered.view,before.view,backend+' sub-pixel finger jitter must not move the canvas');
+   assert.equal(jittered.active,false,backend+' jitter cannot activate the scene');
+   // Pan, pinch and rotation are admitted after a real movement, never a tap.
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[
+    {...first,x:first.x+16,y:first.y-8},
+    {...second,x:second.x+19,y:second.y+11}
+   ]});
+   const start=await state();
+   assert.equal(start.active,true,backend+' actual movement immediately activates navigation');
+   assert.equal(await page.locator('.surface').getAttribute('data-interaction-mode'),'navigation',backend+' movement owns navigation mode');
    const front=await page.evaluate(()=>{
       const r=window.__illustroPerformance.probe().renderer;
       const standby=r.viewportScene.standby;
       return {pictureVisible:getComputedStyle(standby.front).display==='block',
        mode:standby.mode,inkVisible:r.viewportScene.inkPlane.getBoundingClientRect().width>0};
    });
-   assert.equal(front.mode,'navigation',backend+' independent picture is owned by navigation mode');
-   assert.equal(front.pictureVisible,true,backend+' standalone standby picture is displayed above live GPU while navigation starts');
-   assert.equal(front.inkVisible,true,backend+' pending ink plane remains visible during navigation');
-   assert.equal(start.active,true,'second finger activates navigation immediately');
+   assert.equal(front.mode,'navigation',backend+' retained picture is owned by navigation mode');
+   assert.equal(front.pictureVisible,true,backend+' independent standby image visible during movement');
+   assert.equal(front.inkVisible,true,backend+' unfinished ink plane visible during movement');
    const startGate=await page.evaluate(async()=> (await window.__illustroPerformance.probe().renderer.call('inspect')).gates);
-   assert.equal(startGate.navigationHold,true,'drawing worker must be notified that a gesture owns the GPU presentation priority');
+   assert.equal(startGate.navigationHold,true,backend+' drawing worker must be told that user navigation owns priority');
    // Pan, pinch and rotation from physical multi-point touch input; no worker
    // reply or deferred GPU completion is allowed in this step.
    for(let i=1;i<=7;i++){
