@@ -86,6 +86,14 @@ try{
        backend+' '+name+' input masked by debug/crop overlay');
     }
    }
+   console.log('HIT_STACK_RESULT '+JSON.stringify({
+    backend,
+    idle:idle.map(p=>p.elements.slice(0,4)),
+    pending:pending.map(p=>p.elements.slice(0,4)),
+    during:during.map(p=>p.elements.slice(0,4)),
+    nextContactTargets:events.slice(-3),
+    touchCount:probe.touchCount
+   }));
    results.push({backend,pass:true,idle,pending,during,events,probe:{
     touchCount:probe.touchCount,maxEventLag:probe.maxEventLag,maxTimerLag:probe.maxTimerLag},
     canvasCodeUnchanged:true,errors});
