@@ -60,6 +60,21 @@ try{
   await draw(11,.39);
   assert.equal(await page.locator('.surface').getAttribute('data-interaction-mode'),'standby',backend+' returns to standby immediately after input ends');
   await page.evaluate(async()=>{const probe=window.__illustroPerformance.probe();await probe.renderer.drain();});
+  await page.waitForFunction(()=>{
+    const picture=document.querySelector('.illustro-standby-picture');
+    return picture&&getComputedStyle(picture).display==='block'&&picture.width>0;
+  },null,{timeout:15000});
+  const cached=await page.evaluate(()=>{
+    const host=window.__illustroPerformance.probe().renderer,picture=host.viewportScene.standby;
+    return {ready:picture.ready,refreshCount:picture.refreshCount,errors:picture.renderErrors,
+      separateInk:host.viewportScene.inkPlane.parentNode===host.viewportScene.element,
+      overlayBelowInk:picture.front.nextElementSibling===host.viewportScene.inkPlane};
+  });
+  assert.equal(cached.ready,true,backend+' independently retained picture exists in standby');
+  assert.ok(cached.refreshCount>0,backend+' picture is captured from already-visible content');
+  assert.equal(cached.errors,0,backend+' standby capture must not fail');
+  assert.equal(cached.separateInk,true,backend+' unfinished ink must live on separate plane');
+  assert.equal(cached.overlayBelowInk,true,backend+' pending ink stays above standby picture');
   const seeded=await state();
   assert.ok(seeded.strokes>=1,backend+' seed stroke committed');
   await page.evaluate(()=>window.__illustroPerformance.probe().renderer.call('gate','formal'));
@@ -70,6 +85,13 @@ try{
    return (await r.call('inspect')).gates.held==='formal';
   },null,{timeout:60000});
   const before=await state();
+  const panes=await page.evaluate(()=>{
+    const host=window.__illustroPerformance.probe().renderer,p=host.viewportScene.standby;
+    return {mode:p.mode,ready:p.ready,inkCount:host.viewportScene.inkPlane.children.length};
+  });
+  assert.equal(panes.mode,'standby',backend+' pen-up returns to standby while GPU is still gated');
+  assert.equal(panes.ready,true,backend+' previously retained standby image survives pending GPU work');
+  assert.ok(panes.inkCount>0,backend+' CPU preview ink remains above standby image');
   assert.equal(before.active,false,'camera initially idle');
   assert.equal(before.strokes,seeded.strokes+1,'latest logical stroke accepted while formal GPU stalled');
   const first=t(71,.34,.48),second=t(72,.67,.48);
@@ -80,6 +102,15 @@ try{
    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[first,second]});
    assert.equal(await page.locator('.surface').getAttribute('data-interaction-mode'),'navigation',backend+' second finger transfers exclusive ownership to navigation');
    const start=await state();
+   const front=await page.evaluate(()=>{
+      const r=window.__illustroPerformance.probe().renderer;
+      const standby=r.viewportScene.standby;
+      return {pictureVisible:getComputedStyle(standby.front).display==='block',
+       mode:standby.mode,inkVisible:r.viewportScene.inkPlane.getBoundingClientRect().width>0};
+   });
+   assert.equal(front.mode,'navigation',backend+' independent picture is owned by navigation mode');
+   assert.equal(front.pictureVisible,true,backend+' standalone standby picture is displayed above live GPU while navigation starts');
+   assert.equal(front.inkVisible,true,backend+' pending ink plane remains visible during navigation');
    assert.equal(start.active,true,'second finger activates navigation immediately');
    const startGate=await page.evaluate(async()=> (await window.__illustroPerformance.probe().renderer.call('inspect')).gates);
    assert.equal(startGate.navigationHold,true,'drawing worker must be notified that a gesture owns the GPU presentation priority');
@@ -116,7 +147,7 @@ try{
   assert.equal(endState.active,false,'navigation ended after fingers released');
   assert.equal(endState.strokes,before.strokes,'gesture added no stroke after completion');
   assert.deepEqual(errors,[],backend+' no uncaught browser exceptions');
-  report.results.push({backend,seeded,before,moving,held,endState,errors,pass:true});
+  report.results.push({backend,cached,panes,seeded,before,moving,held,endState,errors,pass:true});
   await context.close();
  }
 }finally{

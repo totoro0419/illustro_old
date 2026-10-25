@@ -250,7 +250,7 @@
     {
       "path": "prototypes/brush-rt/build.mjs",
       "sourceCommit": "4a7b48814cb5b66f7674cd816e0ed35e4f9f5ee5",
-      "sha256": "d556da0b6b9be3ec40c9d241f8aaacbef2705046e7c39131f2fe1821954e50f6",
+      "sha256": "3872c9744c35e9845adbdd7e30ddfdd08c8e6ed3ad00b43e8d404e6e22e7c09b",
       "performanceException": "Canvas performance review: presentation scheduling and area-average display cache only; canonical brush geometry unchanged. Full discovered regression required.",
       "instantCanvasException": "User-authorized independent clipped-screen CPU proxy and bounded formal feedback scheduling; strict Foundation/model/shaders/Core unchanged. Exact A baseline pixels/records/history, full regressions and matched A/B/C required. No physical Android or user acceptance claim.",
       "strokeOverlayException": "User-authorized stroke-only preview replaces historical low-resolution rebuild; exact Foundation/model/shaders/Core retained. Requires PR30 exact pixels, fit-view quality and regression evidence. No hardware acceptance claim.",
@@ -258,7 +258,8 @@
       "m10PreviewException": "User-authorized M10 presentation-only optimization from 4708ffe5136ad1fa47be5909c129bb5f8fcb7869: aligned document-pixel analytic feedback, bounded live raster and conversion tasks, current-only tails, measured per-stroke route policy with safe unshown-work fallback. Canonical model, shaders, texture, input, 128px history and save schema unchanged. Require exact same-backend formal pixels, strict-reference coverage, both-backend quality, measured routing, native Undo/save regressions and user review.",
       "presentationRebuildException": "User-authorized rebuild from 8fa3857b: separate input/raster/display roles and immutable dirty document tiles; accepted deposition/sampler/records remain. Require exact transfer/reveal/brush/history/save checks and matched response comparison; physical acceptance UNVERIFIED.",
       "autonomousNavigationException": "Separate editor Worker development from accepted frozen standalone prototype generation. Explicit opt-in required to replace the standalone artifact.",
-      "navigationSceneRebuild": "Single new navigation-scene module in build graph only. Frozen standalone HTML output unchanged."
+      "navigationSceneRebuild": "Single new navigation-scene module in build graph only. Frozen standalone HTML output unchanged.",
+      "standbyBuildGraphException": "User-authorized M10 retained standby picture requires source module registered in the offline prototype/editor/Node test graph; frozen standalone HTML remains untouched without opt-in."
     },
     {
       "path": "prototypes/brush-rt/dist/illustro-brush-rt.html",
@@ -458,7 +459,7 @@
     },
     {
       "path": "packages/brush-rt/src/drawing-host.mjs",
-      "sha256": "848e249cc63498e8ffbfd6d1bb4ca7662bb46cf3819e02626d6bbccd83737e06",
+      "sha256": "ab720ff9453cacd4a81374516600dad7e6062efb5533c932c879991eab086f3c",
       "presentationRebuildException": "User-authorized document-tile publication and independent input/raster/display roles. Requires full-byte transfer/reveal, M08/brush, history/save/reopen and matched performance tests. Physical acceptance UNVERIFIED.",
       "baseCommit": "8fa3857b5ce8deb4dadacce45f06e121a16e8d85",
       "sourceBranch": "rebuild/M10-presentation-correctness-2026-10-21",
@@ -470,7 +471,8 @@
       "regressionRepair": "M10 previous run #39597604396: hide stale reference framebuffer on ordinary view; immediately redraw view changes; preserve responsive 1-job foreground but allow grouped draining of >512 queued idle formal jobs, without changing stroke record/pixels/history.",
       "navigationSceneRebuild": "Replaced navigation-time bitmap/view worker requests and per-layer reproject with one DOM compositor scene transform. Commit is not proof of device responsiveness; gesture blocking experiment required.",
       "previewAlphaException": "PR49 temporary stroke preview compositor uses alpha-enabled Canvas2D drawImage instead of mobile BitmapRenderer; formal GPU pipeline, stroke geometry, 128px history, persistence unchanged. Requires WebGL2/WebGPU temporary overlay alpha, pending formal confirmation screenshot, original regressions and physical mobile verification.",
-      "gestureGpuYieldException": "User-directed M10 responsiveness repair: freeze new formal GPU submits and defer main-thread bitmap installation while user is moving the canvas; resume exact pending work after gesture. Formal stroke batches stay small while unfinished ink is visible. Stroke geometry, GPU deposit pixels, accepted samples, undo and portable saving format unchanged. Verify GPU backends, pending publication, accurate full pixels, touch gestures, background and transparency regressions. Physical tablet/phone verification required."
+      "gestureGpuYieldException": "User-directed M10 responsiveness repair: freeze new formal GPU submits and defer main-thread bitmap installation while user is moving the canvas; resume exact pending work after gesture. Formal stroke batches stay small while unfinished ink is visible. Stroke geometry, GPU deposit pixels, accepted samples, undo and portable saving format unchanged. Verify GPU backends, pending publication, accurate full pixels, touch gestures, background and transparency regressions. Physical tablet/phone verification required.",
+      "standbyRetainedPictureException": "User-authorized separate retained standby frame and pending-ink plane on existing drawing host. Foreground navigation must transform the standalone standby picture with unfinished ink even while GPU commit is pending. Does not alter pixel deposition, history, save format. Mobile acceptance unverified; both backends and 4k pending stroke regression required."
     },
     {
       "path": "packages/brush-rt/src/drawing.worker.mjs",
