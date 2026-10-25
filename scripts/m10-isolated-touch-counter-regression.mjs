@@ -71,6 +71,30 @@ try{
    await fs.writeFile(path.join(path.dirname(out),backend+'-two-fingers-before-formal.png'),await page.screenshot({scale:'css'}));
    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
    assert.equal(await frame.locator('#count').textContent(),'0',backend+' touching ended');
+
+   // The earlier GPU-hold test does not stall the editor's main JavaScript.
+   // Here it is deliberately blocked for 1600ms. The sandboxed child document
+   // should keep recognizing contacts in its own execution environment.
+   await page.evaluate(()=>{
+    window.__m10CpuBusy=false;
+    setTimeout(()=>{
+      window.__m10CpuBusy=true;
+      const until=performance.now()+1600;
+      while(performance.now()<until){}
+      window.__m10CpuBusy=false;
+    },80);
+   });
+   await new Promise(resolve=>setTimeout(resolve,240));
+   const mainBlockedStarted=Date.now();
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[one]});
+   const countWhileMainBlocked=await frame.locator('#count').textContent({timeout:1000});
+   const countElapsed=Date.now()-mainBlockedStarted;
+   assert.equal(countWhileMainBlocked,'1',backend+' touch iframe must count even while parent JS is blocked');
+   assert.ok(countElapsed<1300,backend+' touch iframe cannot wait for the whole 1600ms parent task ('+countElapsed+'ms)');
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[one,two]});
+   assert.equal(await frame.locator('#count').textContent({timeout:1000}),'2',backend+' two contacts during main-thread work');
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+   assert.equal(await frame.locator('#count').textContent({timeout:1000}),'0',backend+' separated iframe releases touch independently');
   }finally{
    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]}).catch(()=>{});
    await page.evaluate(()=>window.__illustroPerformance.probe().renderer.call('gate',false)).catch(()=>{});
