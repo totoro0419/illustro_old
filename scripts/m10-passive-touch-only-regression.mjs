@@ -94,16 +94,65 @@ try{
    assert.equal(during.onCanvas,2,backend+' held GPU does not block viewport contact observation in software browser');
    assert.equal((await renderer()).gates.held,'formal');
    await fs.writeFile(path.join(path.dirname(evidence),backend+'-gpu-held-two-fingers.png'),await page.screenshot({scale:'css'}));
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+   // EXPLICIT independent touch capture owns a dedicated hit surface. This
+   // tests the exact mode offered to mobile users, not a passive observer.
+   await page.evaluate(()=>window.__illustroTouchProbeDirect(true));
+   assert.equal(await page.locator('#illustro-direct-touch-layer').evaluate(e=>getComputedStyle(e).pointerEvents),'auto');
+   assert.equal(await page.locator('#illustro-direct-touch-layer').evaluate(e=>getComputedStyle(e).touchAction),'none');
+   assert.equal(await page.locator('#illustro-direct-touch-layer').getAttribute('data-contact-count'),'0');
+   const originalView=await page.evaluate(()=>Array.from(window.__illustroPerformance.probe().renderer.backend.viewTransform));
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[first]});
+   const directOne=await page.evaluate(()=>window.__illustroTouchProbe());
+   assert.equal(directOne.combined,1,backend+' dedicated input plane must count a finger during formal GPU gate');
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[first,second]});
+   const directTwo=await page.evaluate(()=>window.__illustroTouchProbe());
+   assert.equal(directTwo.combined,2,backend+' dedicated input plane must count two fingers during formal GPU gate');
+   assert.equal(directTwo.onCanvas,2,backend+' both contacts must map into the canvas');
+   assert.equal(await page.locator('#illustro-direct-touch-layer').getAttribute('data-contact-count'),'2');
+   assert.match(await page.locator('#illustro-passive-touch-probe').textContent(),/Touch実数: 2/);
+   assert.deepEqual(await page.evaluate(()=>Array.from(window.__illustroPerformance.probe().renderer.backend.viewTransform)),originalView,
+     backend+' test pad must not alter camera navigation or drawing');
+   await fs.writeFile(path.join(path.dirname(evidence),backend+'-dedicated-two-fingers.png'),await page.screenshot({scale:'css'}));
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+   assert.equal((await page.evaluate(()=>window.__illustroTouchProbe())).combined,0,backend+' release returns to zero');
+   await page.evaluate(()=>window.__illustroTouchProbeDirect(false));
+   assert.equal(await page.locator('#illustro-direct-touch-layer').evaluate(e=>getComputedStyle(e).display),'none');
   }finally{
    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]}).catch(()=>{});
    await page.evaluate(()=>window.__illustroPerformance.probe().renderer.call('gate',false)).catch(()=>{});
   }
   await page.evaluate(()=>window.__illustroPerformance.probe().renderer.drain());
   assert.deepEqual(errors,[],backend+' no browser exceptions');
-  results.push({backend,one,two,after,held,during,errors,pass:true});
+  results.push({backend,one,two,after,held,during,directCaptureVerified:true,errors,pass:true});
   await context.close();
  }
+ // Dedicated detector also works without loading Illustro or its GPU.
+ const independent=await browser.newContext({viewport:{width:900,height:750},hasTouch:true});
+ const independentPage=await independent.newPage();
+ await independentPage.setContent(await fs.readFile('qa/m10-direct-touch/index.html','utf8'));
+ const standalonePad=await independentPage.locator('#pad').boundingBox();
+ assert.ok(standalonePad,'independent touch pad is visible');
+ const standaloneCdp=await independent.newCDPSession(independentPage);
+ const cp=(id,fx)=>({id,x:standalonePad.x+standalonePad.width*fx,
+   y:standalonePad.y+standalonePad.height*.55,radiusX:2,radiusY:2,force:.7});
+ const standaloneFirst=cp(91,.35),standaloneSecond=cp(92,.65);
+ await standaloneCdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[standaloneFirst]});
+ assert.equal(await independentPage.locator('#count').textContent(),'1','standalone detector: one finger');
+ await standaloneCdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[standaloneFirst,standaloneSecond]});
+ assert.equal(await independentPage.locator('#count').textContent(),'2','standalone detector: two fingers');
+ await fs.writeFile(path.join(path.dirname(evidence),'standalone-two-fingers.png'),
+    await independentPage.screenshot({scale:'css'}));
+ await standaloneCdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ assert.equal(await independentPage.locator('#count').textContent(),'0','standalone detector: fingers lifted');
+ await independent.close();
+
  const control=await browser.newContext({viewport:{width:900,height:600},hasTouch:true});
+ const directPage=await control.newPage();
+ await directPage.goto('http://127.0.0.1:'+server.address().port+'/?qa=1&touchProbe=1&captureTouch=1');
+ assert.equal(await directPage.evaluate(()=>window.__illustroTouchProbe?.().directEnabled),true,
+   'direct detection must start armed when explicitly requested');
+ await directPage.close();
  const noProbe=await control.newPage();
  await noProbe.goto('http://127.0.0.1:'+server.address().port+'/?qa=1&touchProbe=0');
  assert.equal(await noProbe.evaluate(()=>typeof window.__illustroTouchProbe),'undefined','touch monitor must be absent unless explicitly enabled');
