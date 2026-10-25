@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Illustro M10 — 独立タッチ入力・停止診断</title>
+<style>
+:root{color-scheme:light;font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif;color:#15223b;background:#edf2f9}
+*{box-sizing:border-box}body{margin:0}main{max-width:800px;margin:auto;padding:16px 14px 35px}h1{font-size:20px;margin:0 0 6px}
+p{margin:8px 0;line-height:1.5}.intro{font-size:14px;color:#44536b}
+.summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:14px 0}
+.status{background:#fff;border:1px solid #cbd7e7;border-radius:12px;padding:9px;text-align:center}
+.status strong{font-size:42px;font-variant-numeric:tabular-nums;display:block;line-height:1.25}
+.status span{font-size:13px}
+#pad{height:min(42vh,380px);min-height:200px;background:white;position:relative;border:3px solid #5876cc;border-radius:16px;overflow:hidden;touch-action:none;overscroll-behavior:contain}
+#ink{display:block;width:100%;height:100%;touch-action:none}
+#state{font-weight:600;font-size:14px;padding:7px 0}.controls{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+button{border:1px solid #a9bbd7;border-radius:9px;background:white;color:#172c4e;padding:10px 13px;font:inherit;font-size:14px}
+button[aria-pressed=true]{background:#183c8e;color:white}
+.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.metric{background:white;padding:8px;border-radius:9px;font-size:13px}.metric b{display:block;font-variant-numeric:tabular-nums;font-size:17px}
+pre{background:#fff;border:1px solid #dae2ec;border-radius:10px;padding:10px;font:12px/1.5 ui-monospace,monospace;max-height:170px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+footer{font-size:12px;color:#65738c}
+</style></head>
+<body><main><h1>指の入力・画面停止の独立検査</h1>
+<p class="intro">Illustro、GPU、Worker、保存処理は読み込みません。指を白い枠に置いたときのブラウザーからの通知を2通りで別々に記録します。</p>
+<div class="summary">
+<div class="status"><strong id="touchCount">—</strong><span>TouchEvent の指の本数</span></div>
+<div class="status"><strong id="pointerCount">0</strong><span>PointerEvent の指の本数</span></div>
+</div>
+<div id="state" role="status">入力待ち（— は通知未受信）</div>
+<div id="pad"><canvas id="ink" aria-label="指の入力を測る白い範囲"></canvas></div>
+<div class="controls">
+<button id="drawMode" aria-pressed="false">線を描く：オフ</button>
+<button id="clear">記録をリセット</button>
+<button id="copy">結果をコピー</button>
+</div>
+<p class="intro">① まず線を描く機能をオフのまま、白い枠に1本、次に2本の指を置く。②「線を描く：オン」に切り替えて線を描き、指を離した直後にも同じことを行う。数字・記録の変化を比較します。</p>
+<div class="metrics">
+<div class="metric">Touch開始通知 <b id="tStarts">0</b></div>
+<div class="metric">Pointer開始通知 <b id="pStarts">0</b></div>
+<div class="metric">画面処理の最長停止 <b id="pause">0 ms</b></div>
+<div class="metric">入力通知の最大遅れ <b id="eventDelay">0 ms</b></div>
+<div class="metric">定期更新回数 <b id="ticks">0</b></div>
+<div class="metric">最後に届いた通知 <b id="last">—</b></div>
+</div>
+<p style="font-weight:600">最新の入力記録</p><pre id="log">まだ通知なし</pre>
+<footer>数値0だけで「OSが指を認識していない」とは判断しません。ブラウザーが通知しなかった場合、このページ単独では原因を特定できません。検査版・作品データへはアクセスしません。</footer>
+<script>
+(()=>{
+"use strict";
+const $=id=>document.getElementById(id);
+const pad=$("pad"),canvas=$("ink"),ctx=canvas.getContext("2d"),pointers=new Set();
+let touchCount=null,tStarts=0,pStarts=0,draw=false,down=false;
+let largestPause=0,largestEventDelay=0,lastTick=performance.now(),ticks=0,lastText="—";
+const records=[];
+const log=(message,e)=>{
+ const now=performance.now();
+ let delay=0;
+ if(e && Number.isFinite(e.timeStamp))delay=Math.max(0,now-e.timeStamp);
+ largestEventDelay=Math.max(largestEventDelay,delay);
+ lastText=message;
+ records.push({ms:Math.round(now),type:message,delay:Math.round(delay),touchCount,pointerCount:pointers.size});
+ if(records.length>150)records.shift();
+ $("last").textContent=message;$("eventDelay").textContent=Math.round(largestEventDelay)+" ms";
+ $("log").textContent=records.slice(-18).map(x=>x.ms+"ms "+x.type+" T:"+String(x.touchCount)+" P:"+x.pointerCount+" 遅れ:"+x.delay+"ms").join("\n");
+ $("log").scrollTop=$("log").scrollHeight;
+};
+const display=()=>{
+ $("touchCount").textContent=touchCount===null?"—":touchCount;
+ $("pointerCount").textContent=pointers.size;
+ $("tStarts").textContent=tStarts;$("pStarts").textContent=pStarts;
+ $("pause").textContent=Math.round(largestPause)+" ms";
+ $("ticks").textContent=ticks;
+ $("state").textContent="Touch: "+(touchCount===null?"通知なし":touchCount)+" / Pointer: "+pointers.size+" / 線を描く: "+(draw?"オン":"オフ");
+};
+const options={capture:true,passive:true};
+for(const name of ["touchstart","touchmove","touchend","touchcancel"]){
+ window.addEventListener(name,e=>{
+  touchCount=e.touches.length;
+  if(name==="touchstart")tStarts+=e.changedTouches.length;
+  if(name!=="touchmove")log(name+" @"+elementName(e.target),e);
+  display();
+ },options);
+}
+for(const name of ["pointerdown","pointermove","pointerup","pointercancel","lostpointercapture"]){
+ window.addEventListener(name,e=>{
+  if(e.pointerType!=="touch")return;
+  if(name==="pointerdown"){pointers.add(e.pointerId);pStarts++;}
+  if(name==="pointerup"||name==="pointercancel"||name==="lostpointercapture")pointers.delete(e.pointerId);
+  if(name!=="pointermove")log(name+" @"+elementName(e.target),e);
+  display();
+ },options);
+}
+function elementName(el){return el?.id||el?.tagName?.toLowerCase()||"unknown";}
+function position(e){const r=canvas.getBoundingClientRect();return [(e.clientX-r.left)*canvas.width/Math.max(1,r.width),(e.clientY-r.top)*canvas.height/Math.max(1,r.height)];}
+function resize(){const r=canvas.getBoundingClientRect();const dpr=Math.min(devicePixelRatio||1,2);canvas.width=Math.max(1,Math.round(r.width*dpr));canvas.height=Math.max(1,Math.round(r.height*dpr));ctx.strokeStyle="#3c60b4";ctx.lineWidth=12*dpr;ctx.lineCap="round";ctx.lineJoin="round";}
+resize();addEventListener("resize",resize);
+canvas.addEventListener("pointerdown",e=>{
+ if(!draw||e.pointerType!=="touch")return;
+ down=true;ctx.beginPath();ctx.moveTo(...position(e));
+});
+canvas.addEventListener("pointermove",e=>{
+ if(!draw||!down||e.pointerType!=="touch")return;
+ ctx.lineTo(...position(e));ctx.stroke();ctx.beginPath();ctx.moveTo(...position(e));
+});
+for(const name of ["pointerup","pointercancel"])window.addEventListener(name,()=>{down=false;});
+$("drawMode").addEventListener("click",()=>{draw=!draw;down=false;$("drawMode").setAttribute("aria-pressed",String(draw));$("drawMode").textContent="線を描く："+(draw?"オン":"オフ");resize();display();});
+$("clear").addEventListener("click",()=>{records.length=0;pointers.clear();touchCount=null;tStarts=0;pStarts=0;largestPause=0;largestEventDelay=0;ticks=0;lastText="—";lastTick=performance.now();$("last").textContent="—";$("log").textContent="記録をリセットしました";resize();display();});
+$("copy").addEventListener("click",async()=>{
+ const payload={page:"m10-native-input-check",time:new Date().toISOString(),userAgent:navigator.userAgent,draw,touchCount,pointerCount:pointers.size,tStarts,pStarts,largestPause,largestEventDelay,ticks,lastText,events:records};
+ try{await navigator.clipboard.writeText(JSON.stringify(payload,null,2));$("copy").textContent="コピーしました";}
+ catch{$("log").textContent=JSON.stringify(payload,null,2);$("copy").textContent="下の記録をコピーしてください";}
+});
+setInterval(()=>{
+ const now=performance.now();largestPause=Math.max(largestPause,Math.max(0,now-lastTick-100));lastTick=now;ticks++;display();
+},100);
+display();
+})();
+</script></main></body></html>
