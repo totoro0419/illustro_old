@@ -1,0 +1,9 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Illustro — 2本指の入力確認版</title>
+<style>body{font:16px/1.8 system-ui,sans-serif;max-width:740px;margin:24px auto;padding:0 16px;background:#f1f4f9;color:#243149}main{background:white;border-radius:16px;padding:23px;border:1px solid #dce3ef}a{color:#2859b9}.action{display:inline-block;color:white;background:#375bcb;padding:12px 19px;border-radius:10px;text-decoration:none}li{margin:8px 0}</style>
+</head><body><main><h1>キャンバスの2本指入力を修正・調査</h1>
+<p>線を描き始められるのにキャンバス操作だけが効かないという報告を受け、画像の描画負荷よりも2本指の操作受付を優先して直した版です。</p>
+<p><a class="action" href="./app/?gestureDebug=1#home">操作記録を表示してIllustroを開く</a></p>
+<p>左上の紺色の小さな表示に、アプリが受け取った指の本数、動き、現在のモード、画面移動の命令回数が表示されます。指を離しても最後の数値が残ります。</p>
+<ol><li>太いGペンで長い線を描き、ペンを離す</li><li>「線を作品に反映しました」が出る前に2本指で移動・拡大・回転を試す</li><li>動かなければ、紺色の記録欄の「認識中の指」「モード」「移動の反映命令」を確認する</li><li>別の線が描けるか、仮線が消えないか、Undoが効くかも確認する</li></ol>
+<p>指が2本認識されない場合は入力受付の問題、移動の命令回数が増えても作品が動かない場合は表示側の問題です。どちらかを特定して修正します。</p>
+<p><a href="https://github.com/totoro0419/illustro/pull/54">検査コードと修正内容（PR #54）</a></p></main></body></html>
