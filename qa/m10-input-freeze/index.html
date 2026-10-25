@@ -1,0 +1,9 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Illustro M10 — 指の入力・全処理停止の原因調査</title><style>body{font:16px/1.8 system-ui,"Noto Sans JP",sans-serif;background:#f1f4f9;color:#24314b;margin:24px auto;padding:0 16px;max-width:780px}main{background:white;border-radius:18px;border:1px solid #dce4ef;padding:24px}.go{display:inline-block;padding:13px 20px;background:#315ccc;border-radius:10px;color:white;text-decoration:none}li{margin:9px 0}.note{font-size:14px;color:#5b6880}</style></head><body><main>
+<h1>指の入力がどこで止まるか調べる版</h1>
+<p>PR #49のキャンバス操作・仮線・表示処理を維持したまま、<strong>画面上で実際に止まった時間を記録</strong>します。今回は指を数える仕組みやキャンバス操作を作り直していません。</p>
+<p><a class="go" href="./app/?inputTrace=1#home">診断付きIllustroを開く</a></p>
+<ol><li>太いGペンで長い線を描いてペンを離します。</li><li>「線を作品に反映しました」が出る前に指を置き、右上の診断表示を確認します。</li><li>「時計の最大停止」「画面更新の最大間隔」「入力遅延」に注目してください。</li><li>右上の診断表示を、指を置く前後と確定後にスクリーンショットで残してください。</li></ol>
+<p>数字が変わらなくても、確定後には過去の入力遅延や処理停止時間が表示されます。停止したかどうかを確認するための版です。</p>
+<p class="note">この調査版は、キャンバスの挙動を変えずに入力と表示の時間を測定します。物理端末のGPU占有とイベントが発生する前のOS側の事情は、この記録だけでは完全には識別できません。</p>
+<p><a href="https://github.com/totoro0419/illustro/pull/61">変更内容と自動検査</a></p>
+</main></body></html>
