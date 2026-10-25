@@ -457,7 +457,7 @@
     },
     {
       "path": "packages/brush-rt/src/drawing-host.mjs",
-      "sha256": "11f697f8c217792fd5a7d7f97d1d8b74090b638f8b1fadbe0229275bad3b050b",
+      "sha256": "59438867d2db36b1df19fb28a3755f124a60f08d6eb5f64e55300894f52e14f9",
       "presentationRebuildException": "User-authorized document-tile publication and independent input/raster/display roles. Requires full-byte transfer/reveal, M08/brush, history/save/reopen and matched performance tests. Physical acceptance UNVERIFIED.",
       "baseCommit": "8fa3857b5ce8deb4dadacce45f06e121a16e8d85",
       "sourceBranch": "rebuild/M10-presentation-correctness-2026-10-21",
@@ -469,7 +469,8 @@
       "regressionRepair": "M10 previous run #39597604396: hide stale reference framebuffer on ordinary view; immediately redraw view changes; preserve responsive 1-job foreground but allow grouped draining of >512 queued idle formal jobs, without changing stroke record/pixels/history.",
       "navigationSceneRebuild": "Replaced navigation-time bitmap/view worker requests and per-layer reproject with one DOM compositor scene transform. Commit is not proof of device responsiveness; gesture blocking experiment required.",
       "previewAlphaException": "PR49 temporary stroke preview compositor uses alpha-enabled Canvas2D drawImage instead of mobile BitmapRenderer; formal GPU pipeline, stroke geometry, 128px history, persistence unchanged. Requires WebGL2/WebGPU temporary overlay alpha, pending formal confirmation screenshot, original regressions and physical mobile verification.",
-      "inputFirstTouchException": "QA-only responsiveness investigation authorized after PR56-58 Android failure. Apply exact document bitmaps cooperatively and avoid redundant full-frame GPU transfer when exact retained document groups suffice. No change to stroke geometry, history, files, non-QA editor paths. Test WebGL2 and WebGPU and require physical Android validation."
+      "inputFirstTouchException": "QA-only responsiveness investigation authorized after PR56-58 Android failure. Apply exact document bitmaps cooperatively and avoid redundant full-frame GPU transfer when exact retained document groups suffice. No change to stroke geometry, history, files, non-QA editor paths. Test WebGL2 and WebGPU and require physical Android validation.",
+      "liveTouchException": "User-authorized M10 stable viewport capture input and cooperative exact bitmap publication while a previous stroke is pending. Brush records, canonical geometry, shader math, undo and persisted payload remain unchanged. Both-backend screenshot/input/history/save regression and physical Android test required; physical acceptance unverified."
     },
     {
       "path": "packages/brush-rt/src/drawing.worker.mjs",
