@@ -1,0 +1,80 @@
+name: M10 Standby Drawing Navigation Exclusive Modes
+on:
+  push:
+    branches: ['feature/M10-explicit-standby-draw-navigate-2026-10-25']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      EXPECTED_COMMIT_SHA: ${{ github.sha }}
+      RT_PLAYWRIGHT_PATH: /tmp/m10-preview-test/node_modules/playwright
+      RT_PNG_PATH: /tmp/m10-preview-test/node_modules/pngjs
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Print frozen source hashes
+        run: sha256sum packages/brush-rt/src/renderer.mjs packages/brush-rt/src/drawing-host.mjs packages/brush-rt/src/drawing.worker.mjs
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Core and brush build, original editor regressions
+        run: |
+          npm run brush:build
+          npm run prep:check
+          npm run core:check
+          npm run brush:regression
+          npm --workspace @illustro/editor exec -- vitest run
+          npm --workspace @illustro/editor exec -- tsc --noEmit
+          VITE_COMMIT_SHA="$GITHUB_SHA" npm --workspace @illustro/editor exec -- vite build --base=./
+      - name: Install Chromium
+        run: |
+          npm install --prefix /tmp/m10-preview-test playwright@1.56.1 pngjs@7.0.0 --no-audit --no-fund
+          /tmp/m10-preview-test/node_modules/.bin/playwright install --with-deps chromium
+      - name: Test black rectangles before formal stroke completion on both GPUs
+        run: PREVIEW_ALPHA_EVIDENCE=/tmp/m10-preview-evidence/report.json node scripts/m10-preview-alpha-regression.mjs
+      - name: Test fixed behind-canvas color during navigation on both GPUs
+        run: SURROUND_EVIDENCE=/tmp/m10-preview-evidence/surround/report.json node scripts/m10-fixed-surround-regression.mjs
+      - name: Test exclusive standby/drawing/navigation under held formal GPU
+        run: NAVIGATION_EVIDENCE=/tmp/m10-preview-evidence/navigation/report.json node scripts/m10-pending-navigation-regression.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m10-exclusive-mode-evidence
+          path: /tmp/m10-preview-evidence/
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: m10-exclusive-mode-app
+          path: apps/editor/dist/
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: site
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: m10-exclusive-mode-app
+          path: site/qa/m10-exclusive-modes/app
+      - name: Publish independent preview without modifying older QA
+        run: |
+          cp qa/m10-exclusive-modes/index.html site/qa/m10-exclusive-modes/index.html
+          cd site
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add qa/m10-exclusive-modes
+          test -z "$(git diff --cached --name-only | sed '/^qa\/m10-gesture-gpu-yield\//d')"
+          git diff --cached --quiet || git commit -m "qa: exclusive standby/drawing/navigation $GITHUB_SHA"
+          git pull --rebase origin gh-pages
+          git push origin HEAD:gh-pages
