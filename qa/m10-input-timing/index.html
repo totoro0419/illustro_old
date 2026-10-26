@@ -111,7 +111,7 @@ result.pointerCancels=l.filter(e=>e.kind==='pointercancel'&&e.place==='window'&&
 run=null;stopLoad();by('start').disabled=by('arm').disabled=by('mode').disabled=false;by('stop').disabled=true;
 by('status').textContent='終了：Touch開始 '+result.windowTouchStarts+'件／Pointer開始 '+result.windowPointerStarts+'件、キャンセル '+(result.touchCancels+result.pointerCancels)+'件。';
 by('clock').textContent='試験 '+result.number+'：'+result.mode+'／'+reason;drawUI();}
-function raf(now){if(run)frameGap=Math.max(frameGap,now-lastFrame);lastFrame=now;if(run&&now<run.until){if(gpu)gpuFrame();if(bitmap)bitmapFrame();}requestAnimationFrame(raf);}
+function raf(now){requestAnimationFrame(raf);if(run)frameGap=Math.max(frameGap,now-lastFrame);lastFrame=now;if(run&&now<run.until){try{if(gpu)gpuFrame();if(bitmap)bitmapFrame();}catch(e){run.error=String(e);rec('render-error',{message:String(e)});end('render-error');}}}
 requestAnimationFrame(raf);setInterval(()=>{const now=performance.now();if(run)timerGap=Math.max(timerGap,now-lastTick);lastTick=now;if(run&&now>=run.until)end('elapsed');drawUI();},100);
 function drawUI(){const last=run||runs[runs.length-1];by('tc').textContent=touchCount;by('pc').textContent=fingers.size;
 const list=run?log.slice(run.from):[];by('starts').textContent=run?list.filter(e=>e.kind==='touchstart'&&e.place==='window').length:(last?last.windowTouchStarts:'—');
