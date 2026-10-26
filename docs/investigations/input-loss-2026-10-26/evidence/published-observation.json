@@ -1,0 +1,24 @@
+{
+  "observedAtUtc": "2026-10-26T10:12:27Z",
+  "surface": "Cloud Chrome, not the user's Android device",
+  "landing": "https://totoro0419.github.io/illustro/qa/m10-real-input/",
+  "app": "https://totoro0419.github.io/illustro/qa/m10-real-input/app/?inputTrace=1#home",
+  "observedCommit": "fad5caa8b57879f3552c83e8cf4e61e32f3cf82b",
+  "script": "https://totoro0419.github.io/illustro/qa/m10-real-input/app/assets/index-AZM6EHeq.js",
+  "ghPagesBlob": "904fc27b444071985eaffe10c56593ad015b158b",
+  "iframeCount": 0,
+  "passiveTouchProbePresent": false,
+  "newDocumentAttempt": {
+    "width": 4000,
+    "height": 4000,
+    "outcome": "not executable: GPU initialization failed",
+    "status": "描画を開始できませんでした。GPU initialization failed: Error: WebGPU unavailable (request-adapter: requestAdapter returned null); WebGL2 initialization failed: WebGL2 float render targets unavailable"
+  },
+  "rootCauseInferenceFromThisFailure": false,
+  "deviceAccess": {
+    "adb": null,
+    "usbBusAvailable": false,
+    "androidSdkRootSet": false,
+    "androidHomeSet": false
+  }
+}

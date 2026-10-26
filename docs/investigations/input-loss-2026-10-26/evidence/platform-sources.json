@@ -1,0 +1,89 @@
+{
+  "collected_at_utc": "2026-10-26T10:13:51.719618+00:00",
+  "sources": [
+    {
+      "name": "PreferStylusOverTouchBlocker.cpp",
+      "url": "https://android.googlesource.com/platform/frameworks/native/+/4f463a6b1de9198963dc6aff74154a504ba3f8f6/services/inputflinger/PreferStylusOverTouchBlocker.cpp",
+      "commit": "4f463a6b1de9198963dc6aff74154a504ba3f8f6",
+      "bytes": 8389,
+      "sha256": "0732389e8f5a557011508587543577bbe837d52dd01dbd418934460341490645"
+    },
+    {
+      "name": "PreferStylusOverTouchBlocker.h",
+      "url": "https://android.googlesource.com/platform/frameworks/native/+/4f463a6b1de9198963dc6aff74154a504ba3f8f6/services/inputflinger/PreferStylusOverTouchBlocker.h",
+      "commit": "4f463a6b1de9198963dc6aff74154a504ba3f8f6",
+      "bytes": 2527,
+      "sha256": "544bdd2418f82ce867ebf9f48f98320f9b8fa35a748f399255212b7dd5062c16"
+    },
+    {
+      "name": "InputDispatcher.cpp",
+      "url": "https://android.googlesource.com/platform/frameworks/native/+/4f463a6b1de9198963dc6aff74154a504ba3f8f6/services/inputflinger/dispatcher/InputDispatcher.cpp",
+      "commit": "4f463a6b1de9198963dc6aff74154a504ba3f8f6",
+      "bytes": 337427,
+      "sha256": "e873c656b8f5274de6433a1dd79408730fa399fee570b7faa57280804e87f5c0"
+    },
+    {
+      "name": "TouchInputMapper.cpp",
+      "url": "https://android.googlesource.com/platform/frameworks/native/+/4f463a6b1de9198963dc6aff74154a504ba3f8f6/services/inputflinger/reader/mapper/TouchInputMapper.cpp",
+      "commit": "4f463a6b1de9198963dc6aff74154a504ba3f8f6",
+      "bytes": 191818,
+      "sha256": "671047b8410c2754ba52693a77a5018d0b3a4c08861a1288917fd54755d6f748"
+    },
+    {
+      "name": "EventForwarder.java",
+      "url": "https://chromium.googlesource.com/chromium/src/+/dddbf4af8531632185b2fc08ead7f06cdf13848e/ui/android/java/src/org/chromium/ui/base/EventForwarder.java",
+      "commit": "dddbf4af8531632185b2fc08ead7f06cdf13848e",
+      "bytes": 52733,
+      "sha256": "b6fe10eaf46e181f376cda5ba41a19ff43ec930f46fdcb9036294dd032bba04d"
+    },
+    {
+      "name": "render_widget_host_view_android.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/dddbf4af8531632185b2fc08ead7f06cdf13848e/content/browser/renderer_host/render_widget_host_view_android.cc",
+      "commit": "dddbf4af8531632185b2fc08ead7f06cdf13848e",
+      "bytes": 157174,
+      "sha256": "b4bdda7b0f5e5f6b3f81559943ee302c9c10d2c4d6219f986253bf61223afc8a"
+    },
+    {
+      "name": "touch_event_queue.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/dddbf4af8531632185b2fc08ead7f06cdf13848e/components/input/touch_event_queue.cc",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "touch_event_manager.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/dddbf4af8531632185b2fc08ead7f06cdf13848e/third_party/blink/renderer/core/input/touch_event_manager.cc",
+      "commit": "dddbf4af8531632185b2fc08ead7f06cdf13848e",
+      "bytes": 30281,
+      "sha256": "00f0e8d4d0af97208077652e8466c0b31e3a6bfc88a750485c692ea896f06aea"
+    },
+    {
+      "name": "event_dispatcher.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/dddbf4af8531632185b2fc08ead7f06cdf13848e/third_party/blink/renderer/core/dom/events/event_dispatcher.cc",
+      "commit": "dddbf4af8531632185b2fc08ead7f06cdf13848e",
+      "bytes": 25905,
+      "sha256": "914086254b0c68c5a08beb92cd972f4e6ac4547d0500ac788217be383be6af79"
+    },
+    {
+      "name": "UnwantedInteractionBlocker.cpp",
+      "url": "https://android.googlesource.com/platform/frameworks/native/+/4f463a6b1de9198963dc6aff74154a504ba3f8f6/services/inputflinger/UnwantedInteractionBlocker.cpp",
+      "bytes": 32070,
+      "sha256": "7fda87e71d02a4b1c48f7443fda05aeadfc47552d446acbe7ccd19bdf1a20dbd"
+    },
+    {
+      "name": "pointer_event_manager.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/dddbf4af8531632185b2fc08ead7f06cdf13848e/third_party/blink/renderer/core/input/pointer_event_manager.cc",
+      "bytes": 65491,
+      "sha256": "2f6e0b72d0b0d640f3d5baaaa3ba74cb98ee176c33d4641961d0f05b1c5f2494"
+    }
+  ],
+  "notes": [
+    "These upstream revisions are source references, not a fingerprint of the user device.",
+    "The retrieved AOSP main head metadata is dated 2025-03-25. It must not be described as the installed Android revision.",
+    "The touch_event_queue.cc URL returned 404. No conclusion relies on its contents."
+  ],
+  "reference_documents": [
+    "https://source.android.com/docs/core/interaction/input/touch-devices",
+    "https://source.android.com/docs/core/interaction/input/getevent",
+    "https://source.android.com/docs/core/graphics/winscope/capture/adb",
+    "https://perfetto.dev/docs/reference/trace-config-proto"
+  ]
+}

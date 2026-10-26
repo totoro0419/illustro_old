@@ -1,0 +1,201 @@
+{
+  "scope": "Static source inspection. No Android device observation.",
+  "revision": "eeea860a1997bbe613af4e07601d78e0a39eeceb",
+  "fingerprints": [
+    {
+      "path": "apps/editor/src/inputFreezeTrace.ts",
+      "blob": "d5a1907a8ad67f329c96961af84ef4000c1cc77c",
+      "sha256": "eb186ad18712a65d18036aac56b3bc7f648f79a62f70f5184bed2e48861af91f",
+      "bytes": 6099
+    },
+    {
+      "path": "apps/editor/src/main.ts",
+      "blob": "e106d488966d844f9be144471f06e9984b259586",
+      "sha256": "50bd8a34157fdb5e3ccb6bebafd63aab297acb950fc04307888c60b672a1d843",
+      "bytes": 85790
+    },
+    {
+      "path": "apps/editor/src/brushSurface.ts",
+      "blob": "d43e51f9f1451c525ab36d028964c84a422c4261",
+      "sha256": "0b87c21f276c1126786e0f4c76387f47565e4f51f9fc2649e632b43700d7b583",
+      "bytes": 51832
+    },
+    {
+      "path": "apps/editor/src/canvasNavigation.ts",
+      "blob": "b1c54e91000b6d13b07b1b13ea8f629779a7e2da",
+      "sha256": "6646241ad414be72adad6502a1e83ae0ad8f4d57747779cf21790e9ed4b2f952",
+      "bytes": 3106
+    },
+    {
+      "path": "apps/editor/src/passiveTouchProbe.ts",
+      "blob": "1d5a007aeb5750363671a29145fa37509541fe54",
+      "sha256": "481a6fb6d1470da122bf063edbdf64fc5767b14768a072fe0fb76bb125b59329",
+      "bytes": 8221
+    },
+    {
+      "path": "apps/editor/src/isolatedTouchFrame.ts",
+      "blob": "10a5c656572206d48a40818f23626f3c5d73473c",
+      "sha256": "17e0152bb020b8ded88448c5304650a4ce3d576c2cde5d7f19e6c3168e1a2db6",
+      "bytes": 3837
+    },
+    {
+      "path": "packages/brush-rt/src/drawing-host.mjs",
+      "blob": "1094c33e93231150408c14e3221255dab6f9d8bf",
+      "sha256": "59438867d2db36b1df19fb28a3755f124a60f08d6eb5f64e55300894f52e14f9",
+      "bytes": 23114
+    },
+    {
+      "path": "packages/brush-rt/src/document-presentation.mjs",
+      "blob": "aae2d360527718dc0783924e03cd3182652e5abe",
+      "sha256": "5710f913ba07f881df21ff606c78fa55a6bf102de3c74a052535b0f3da6db474",
+      "bytes": 2819
+    },
+    {
+      "path": "packages/brush-rt/src/viewport-scene.mjs",
+      "blob": "bdd8cae25e99d7cccfdb2b6bfcd3a7af357df97f",
+      "sha256": "2bc1a43bfb73757b201223e4eab17b8be9a2e4b807d40fb6c2a4848edda9eb4a",
+      "bytes": 1023
+    },
+    {
+      "path": "scripts/m10-live-touch-regression.mjs",
+      "blob": "5a2d02dba963151098634438eb2382c7616d1f47",
+      "sha256": "340fd5950d1255b26b4bc03db79454d8c399a15ed9812e9e5d53871e785d59f3",
+      "bytes": 9146
+    },
+    {
+      "path": "packages/brush-rt/src/drawing.worker.mjs",
+      "blob": "55e2a3692a8cde217f6c440bfec5bee6f3800e2e",
+      "sha256": "91f3be55ccf5af115b72fe1bd61c41c519f1c02e353d03b87d5bc149151abddb",
+      "bytes": 15423
+    },
+    {
+      "path": "packages/brush-rt/src/renderer.mjs",
+      "blob": "c14b665d17a98346bf63d1768d17ad2590a05c62",
+      "sha256": "c6c00be10935a2df9c11f94909e1c9a2cc89386b282a7598472b9e2d3b07e932",
+      "bytes": 131073
+    }
+  ],
+  "checks": [
+    {
+      "id": "capture-installed-before-editor-input",
+      "observed": true
+    },
+    {
+      "id": "touch-navigation-precedes-brush-admission-guards",
+      "observed": true
+    },
+    {
+      "id": "pen-pointer-cleared-before-session-end",
+      "observed": true
+    },
+    {
+      "id": "formal-status-after-waitStroke",
+      "observed": true
+    },
+    {
+      "id": "window-touch-recorders-are-passive-capture",
+      "observed": true
+    },
+    {
+      "id": "touchmove-not-added-to-event-log",
+      "observed": true
+    },
+    {
+      "id": "pointermove-and-hover-not-registered-by-trace",
+      "observed": true
+    },
+    {
+      "id": "isolated-frame-requires-separate-query-option",
+      "observed": true
+    },
+    {
+      "id": "overlay-source-has-pointer-events-none",
+      "observed": true
+    },
+    {
+      "id": "old-regression-adds-test-hit-target",
+      "observed": true
+    },
+    {
+      "id": "old-regression-draws-with-synthetic-finger-input",
+      "observed": true
+    },
+    {
+      "id": "worker-status-waits-for-picture-ack",
+      "observed": true
+    },
+    {
+      "id": "post-release-deadline-selects-render-job-budget",
+      "observed": true
+    }
+  ],
+  "history": [
+    {
+      "from": 49,
+      "to": 56,
+      "files": [
+        ".github/workflows/m10-touch-probe-only.yml",
+        "apps/editor/src/main.ts",
+        "apps/editor/src/passiveTouchProbe.ts",
+        "qa/m10-touch-probe-only/index.html",
+        "scripts/m10-passive-touch-only-regression.mjs"
+      ]
+    },
+    {
+      "from": 56,
+      "to": 57,
+      "files": [
+        ".github/workflows/m10-direct-touch.yml",
+        "apps/editor/src/passiveTouchProbe.ts",
+        "qa/m10-direct-touch/index.html",
+        "scripts/m10-passive-touch-only-regression.mjs"
+      ]
+    },
+    {
+      "from": 57,
+      "to": 58,
+      "files": [
+        ".github/workflows/m10-isolated-counter.yml",
+        "apps/editor/public/qa-touch-counter-frame.html",
+        "apps/editor/src/isolatedTouchFrame.ts",
+        "apps/editor/src/passiveTouchProbe.ts",
+        "qa/m10-isolated-counter/index.html",
+        "scripts/m10-isolated-touch-counter-regression.mjs"
+      ]
+    },
+    {
+      "from": 58,
+      "to": 59,
+      "files": [
+        ".github/workflows/m10-touch-yield.yml",
+        "docs/production-prep/source-lock.json",
+        "packages/brush-rt/src/document-presentation.mjs",
+        "packages/brush-rt/src/drawing-host.mjs",
+        "qa/m10-touch-yield/index.html",
+        "scripts/m10-isolated-touch-counter-regression.mjs"
+      ]
+    },
+    {
+      "from": 59,
+      "to": 60,
+      "files": [
+        ".github/workflows/m10-stroke-yield.yml",
+        "apps/editor/src/strokeCommit.test.ts",
+        "apps/editor/src/strokeCommit.ts",
+        "qa/m10-stroke-yield/index.html"
+      ]
+    },
+    {
+      "from": 60,
+      "to": 63,
+      "files": [
+        ".github/workflows/m10-live-touch.yml",
+        "apps/editor/src/brushSurface.ts",
+        "docs/production-prep/source-lock.json",
+        "packages/brush-rt/src/drawing-host.mjs",
+        "qa/m10-live-touch/index.html",
+        "scripts/m10-live-touch-regression.mjs"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "kind": "Recalculation from PR64 issuecomment-6396897243; NOT original Android JSON",
+  "source": "https://github.com/totoro0419/illustro/pull/64#issuecomment-6396897243",
+  "rawAndroidTraceObtained": false,
+  "rows": [
+    {
+      "penUp": 21659.7,
+      "formal": 21934.8,
+      "nextTouch": 22273.7,
+      "penUpToFormalMs": 275.1,
+      "formalToNextTouchMs": 338.9,
+      "penUpToNextTouchMs": 614
+    },
+    {
+      "penUp": 26911.7,
+      "formal": 27217.4,
+      "nextTouch": 27510.6,
+      "penUpToFormalMs": 305.7,
+      "formalToNextTouchMs": 293.2,
+      "penUpToNextTouchMs": 598.9
+    },
+    {
+      "penUp": 40560,
+      "formal": 40839.8,
+      "nextTouch": 41149.1,
+      "penUpToFormalMs": 279.8,
+      "formalToNextTouchMs": 309.3,
+      "penUpToNextTouchMs": 589.1
+    }
+  ],
+  "note": "The last two formal times are status-write, first formal time is MutationObserver notification; none is a physical presentation timestamp. First observed touch is not the physical onset or the exact recovery time."
+}

@@ -1,0 +1,34 @@
+{
+  "scope": "Exact upstream processMotion/checkToolType with stand-in event types, clocks and feature flag, compiled on host. NOT the device's Android implementation or input trace.",
+  "source_commit": "4f463a6b1de9198963dc6aff74154a504ba3f8f6",
+  "source_sha256": "0732389e8f5a557011508587543577bbe837d52dd01dbd418934460341490645",
+  "results": [
+    {
+      "blockHover": false,
+      "touchDownDuringPenDelivered": 0,
+      "sameHeldTouchAfterPenUpDelivered": 0,
+      "freshTouchAfterPenUpDelivered": 1,
+      "touchDuringHoverDelivered": 1,
+      "sameHeldTouchAfterHoverExitDelivered": 1,
+      "retryAfterLiftingFingerDelivered": 1,
+      "mixedToolDeviceEventDelivered": 1
+    },
+    {
+      "blockHover": true,
+      "touchDownDuringPenDelivered": 0,
+      "sameHeldTouchAfterPenUpDelivered": 0,
+      "freshTouchAfterPenUpDelivered": 1,
+      "touchDuringHoverDelivered": 0,
+      "sameHeldTouchAfterHoverExitDelivered": 0,
+      "retryAfterLiftingFingerDelivered": 1,
+      "mixedToolDeviceEventDelivered": 1
+    }
+  ],
+  "rootCauseIdentified": false,
+  "implications": [
+    "This function can remove finger events before the web page while stylus events continue.",
+    "Once this function cancels a held finger gesture, stylus release alone does not restore that gesture; lift and a fresh contact are required.",
+    "A fresh contact after pen up can pass immediately in these inputs. This function alone is not proof of a fixed post-pen timeout.",
+    "No measured evidence shows that the user's device selected this function, these flags or these input sequences."
+  ]
+}

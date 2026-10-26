@@ -1,0 +1,102 @@
+{
+  "validatedAtUtc": "2026-10-26T10:36:29.216285+00:00",
+  "sourceRevision": "eeea860a1997bbe613af4e07601d78e0a39eeceb",
+  "commands": [
+    {
+      "command": "node docs/investigations/input-loss-2026-10-26/audit.mjs",
+      "exitCode": 0,
+      "scope": "13 source observations, 9 original-recorder experiments, optional-recorder cleanup audit; no Android device"
+    },
+    {
+      "command": "python3 docs/investigations/input-loss-2026-10-26/audit_aosp.py /path/to/pinned/PreferStylusOverTouchBlocker.cpp",
+      "exitCode": 0,
+      "scope": "host compilation of upstream function with stand-in types; no Android device"
+    },
+    {
+      "command": "node --check docs/investigations/input-loss-2026-10-26/capture-dom.js",
+      "exitCode": 0,
+      "scope": "syntax"
+    },
+    {
+      "command": "JSON parse / relative Markdown target check / git diff HEAD --name-only",
+      "exitCode": 0,
+      "scope": "evidence files readable, relative links resolve, no existing tracked file modified"
+    }
+  ],
+  "appFilesChanged": [],
+  "workflowFilesChanged": [],
+  "androidTraceAcquired": false,
+  "rootCauseIdentified": false,
+  "fileFingerprints": [
+    {
+      "path": "docs/investigations/input-loss-2026-10-26/NEXT_EVIDENCE.md",
+      "bytes": 7005,
+      "sha256": "697663d8e81bd2bdce2cc192b4d4bef529cbb68e3a3fe0d6d7c59e0cdb1f4045"
+    },
+    {
+      "path": "docs/investigations/input-loss-2026-10-26/REPORT.md",
+      "bytes": 19997,
+      "sha256": "d0c04e2786d7cb6d29c06282d0d736a5047b87c41c9e46ee0ab0c7e84fed9c7c"
+    },
+    {
+      "path": "docs/investigations/input-loss-2026-10-26/audit.mjs",
+      "bytes": 14694,
+      "sha256": "245b9daa6cb2ae9604a7fd2674dcafa417d101f0b789e7d7ba8779583d062a8c"
+    },
+    {
+      "path": "docs/investigations/input-loss-2026-10-26/audit_aosp.py",
+      "bytes": 5991,
+      "sha256": "14f202c82557a178e466579dd06281b8cddb2d446e1f7e3e8256bb7bb2a02d3f"
+    },
+    {
+      "path": "docs/investigations/input-loss-2026-10-26/capture-dom.js",
+      "bytes": 5581,
+      "sha256": "03a12df9bddec97ffc91ad39c9048fbd00f78c7dfea4f982473570ac85cc57fd"
+    },
+    {
+      "path": "docs/investigations/input-loss-2026-10-26/evidence/aosp-function-audit.json",
+      "bytes": 1589,
+      "sha256": "b1d97a54a9d54100a6a0db452d9e2f965f1ab86061bba9f827cd44551936990a"
+    },
+    {
+      "path": "docs/investigations/input-loss-2026-10-26/evidence/capture-preparation-audit.json",
+      "bytes": 494,
+      "sha256": "aa82b9a27fb12306ac3204d1dccc990aebdad67503ea839c74527837b6825b64"
+    },
+    {
+      "path": "docs/investigations/input-loss-2026-10-26/evidence/github-records.json",
+      "bytes": 50127,
+      "sha256": "bce991be56f03034bf8113d8f5f6f028de70146bd0cf64d591a74f3d7427545d"
+    },
+    {
+      "path": "docs/investigations/input-loss-2026-10-26/evidence/platform-sources.json",
+      "bytes": 4755,
+      "sha256": "433551316724b4b8296c372ec162e2dcf7c6619406a1d529bdf92ed8ed2e48d8"
+    },
+    {
+      "path": "docs/investigations/input-loss-2026-10-26/evidence/published-observation.json",
+      "bytes": 1090,
+      "sha256": "0fdcc0589103dfd89a7a6fa83a819d6f456f4459cb1d7911fe4211f724cdbb31"
+    },
+    {
+      "path": "docs/investigations/input-loss-2026-10-26/evidence/published-source-match.json",
+      "bytes": 1238,
+      "sha256": "c828df7e3dbe779f1b79be271f9bdc682d9e805c318a02178ff72111e39ac3b6"
+    },
+    {
+      "path": "docs/investigations/input-loss-2026-10-26/evidence/recorder-audit.json",
+      "bytes": 2190,
+      "sha256": "30cf9b62a7b38c1b33d0c379b636c4a46823c2a173decb8aeb469b5d8efbd09f"
+    },
+    {
+      "path": "docs/investigations/input-loss-2026-10-26/evidence/reported-timing.json",
+      "bytes": 1028,
+      "sha256": "2e1050b5982feae4f031c23bd5c782f0d1cc75f2d5bd2d9eac2b2dde8ddc3de4"
+    },
+    {
+      "path": "docs/investigations/input-loss-2026-10-26/evidence/source-audit.json",
+      "bytes": 6094,
+      "sha256": "6b51da2f4b9e867fc5d2f65c43d5bae6c2443023f07239dc344f782886e76925"
+    }
+  ]
+}

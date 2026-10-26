@@ -1,0 +1,81 @@
+{
+  "scope": "Offline invocation of the exact PR64 logger with stand-in DOM and clocks. NOT browser/Android input or a reproduction of the symptom.",
+  "sourceBlob": "d5a1907a8ad67f329c96961af84ef4000c1cc77c",
+  "experiments": [
+    {
+      "id": "disabled-without-opt-in",
+      "listenerCount": 0,
+      "elementCount": 0
+    },
+    {
+      "id": "touchmove-delivered-without-a-log-row",
+      "touchCount": 2,
+      "loggedEvents": 0,
+      "meaning": "A missing start/log row is not proof that every type of touch event was absent."
+    },
+    {
+      "id": "pen-is-included-in-pointer-finger-counter",
+      "pointerTouches": 1,
+      "touchCount": 0,
+      "event": {
+        "at": 100,
+        "kind": "pointerdown pen",
+        "details": {
+          "count": 1,
+          "delayMs": 0
+        }
+      }
+    },
+    {
+      "id": "pointer-motion-and-hover-have-no-recorder",
+      "registeredPointerTypes": [
+        "pointerdown",
+        "pointerup",
+        "pointercancel"
+      ]
+    },
+    {
+      "id": "timer-and-frame-log-thresholds",
+      "timerIntervalMs": 35,
+      "timerLoggedAtGapMs": 80,
+      "frameLoggedOnlyAboveMs": 100,
+      "meaning": "Absence of a log row is not a continuous heartbeat record."
+    },
+    {
+      "id": "repeated-status-text-skips-formal-confirmation",
+      "statusWrites": 2,
+      "formalRows": 1,
+      "statusTime": 100
+    },
+    {
+      "id": "longtask-arrival-is-not-task-start",
+      "row": {
+        "at": 500,
+        "kind": "longtask",
+        "details": {
+          "start": 190,
+          "duration": 300
+        }
+      },
+      "taskInterval": [
+        190,
+        490
+      ],
+      "meaning": "Check overlap using details.start and duration, not only row.at."
+    },
+    {
+      "id": "unsupported-performance-observer-is-silent",
+      "totalLongTasks": 0,
+      "supportFlagInSnapshot": false
+    },
+    {
+      "id": "bounded-log-has-no-dropped-record-counter",
+      "eventCount": 4000,
+      "touchCount": 1,
+      "hasStartRow": false,
+      "droppedCountInSnapshot": false,
+      "meaning": "A possible recorder limit, not evidence it happened in the user recording."
+    }
+  ],
+  "rootCauseIdentified": false
+}

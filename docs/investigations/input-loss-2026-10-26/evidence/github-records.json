@@ -1,0 +1,210 @@
+{
+  "collectedAt": "2026-10-26T10:19:13.670Z",
+  "repo": "totoro0419/illustro",
+  "prs": [
+    {
+      "number": 64,
+      "url": "https://github.com/totoro0419/illustro/pull/64",
+      "title": "M10: 仮線→本線の間に指入力が届かない原因を実機で記録",
+      "head": "eeea860a1997bbe613af4e07601d78e0a39eeceb",
+      "headBranch": "investigate/M10-real-device-event-stall-2026-10-25",
+      "base": "902d746465db1531f92b1fbe71befb5956d111a3",
+      "baseBranch": "fix/M10-live-touch-during-pending-2026-10-25",
+      "body": "## ユーザー実機で確認された事実\nPR #63のChrome疑似2点タッチ・GPUゲート自動検査は通過したが、実際のAndroid端末では何一つ改善せず、仮線〜本線確定までTouch実数が増えない・キャンバスが動かない。PR #63は実機不合格。操作受付条件・重ねた画像だけの問題とは断定できない。\n\n## このPRで実行したこと\n- PR #61で作成したウィンドウ最上流のTouchEvent/PointerEvent記録、35ms時計更新、描画画面のフレーム間隔、長時間のJavaScript処理を記録する`inputFreezeTrace.ts`を、現在のPR #63改修後コードに移植。\n- 実際のIllustroの正式反映メッセージ、作品の記録・保存準備・UI変更の開始終了を同じ時計に記録。\n- `?inputTrace=1`のみ動作。通常アプリではイベント測定・パネルは無効。\n- 表示が止まっていても、後から「診断結果をコピー」で入力と停止時間をコピーできる。単独の別お絵かき検査ではなく、問題が発生するアプリ本体に付けた。\n- GitHub ActionsでTypeScript・既存描画検査・WebGL2/WebGPU回帰を実行し、独立GitHub Pages版を公開する。\n\n## 必ず区別するべき現象\n1. 指を置いている間、35ms時計・rAFも停止 → JavaScript main threadの占有・ブラウザー画面処理の停止の可能性。\n2. 時計は更新できるのにグローバルのTouchEvent/PointerEventがこない → Chromeの入力配信・接触判定・対象要素等の可能性。\n3. グローバルではイベントを受信しているのに操作に届かない → Illustro側の受付/操作経路。\n4. `Event.timeStamp`が前なのに受信が後 → イベントの遅延配送を示唆。ただしブラウザーのtimestampは直接の物理接触時刻とは限らない。\n\n**このPRは調査フェーズであり、実機修正完了を宣言しない。原因特定後に故障点を直接修正する。**"
+    },
+    {
+      "number": 63,
+      "url": "https://github.com/totoro0419/illustro/pull/63",
+      "title": "M10: 仮線から本線確定までの指操作を受理し続ける修正",
+      "head": "902d746465db1531f92b1fbe71befb5956d111a3",
+      "headBranch": "fix/M10-live-touch-during-pending-2026-10-25",
+      "base": "6586b3f8c9d76e7d09d6b263b9680ed9a40b2404",
+      "baseBranch": "fix/M10-yield-stroke-commit-input-2026-10-25",
+      "body": "## 対象とユーザー実機での現象\n太いGペン・鉛筆でストロークを離した直後から「線を作品に反映しました」まで、指で移動・拡大・回転できない。正式確定後は復帰。PR #62の実機検査は不合格だった。原因の断定はしていない。\n\n## 起点\nPR #60 `fix/M10-yield-stroke-commit-input-2026-10-25` を基準にした差分修正。PR #61/#62の旧版ロールバックは取り込まない。\n\n## 実装\n1. `BrushSurface` のポインター受付を、キャンバス個別の target 厳格判定から、固定の `.surface` の capture 段階で受ける方式へ変更。仮線や画像が入力対象になっても指のイベントを拾い、編集用ボタンへの入力は除外。\n2. `DrawingHost` の `DocumentPresentation.applyCooperatively`（完成画像の区画を小分けに処理し、合間にブラウザーへ制御を戻す処理）を検査限定ではなく通常版に適用。Workerの結果は同じ正確な画像データで、仮線は完成した画像へ切り替わるまで保持する。\n3. Playwright自動検査を追加。4000×4000の太いGペン後にGPU確定を意図的に止めた状態で、上に入力を遮る子要素を置き、1/2指の受信と移動・拡大・回転、誤描画なし、本線復帰をWebGL2/WebGPUで検査する。既存の黒い四角・背景表示テストも実施。\n\n## 完了基準\nこのPRを現段階ではDraftとして維持する。自動検査が完了しても、ユーザーAndroid実機で線確定より先に1/2本指が受理され、キャンバスが実際に操作できること、表示・Undo/Redo・保存が正常であることを確認するまで合格・統合禁止。"
+    },
+    {
+      "number": 62,
+      "url": "https://github.com/totoro0419/illustro/pull/62",
+      "title": "[実機不合格・旧版起点・統合禁止] M10 4条件タッチ停止切り分け",
+      "head": "1c684317d1aa276b257a49f96aebbbaee1b7e320",
+      "headBranch": "experiment/M10-input-ablation-2026-10-25",
+      "base": "980eab54f7f2957b809ccaf6f8a0e1d0df1ae9a3",
+      "baseBranch": "fix/M10-preview-black-rectangle-2026-10-24",
+      "body": "## ⛔ 実機検査結果（2026-10-25）— 不合格・統合禁止\nユーザーが4つの比較モードすべてを実機検査した結果、正式反映前の指の認識停止は**どのモードでも解消しなかった**。したがって現時点で仮線・画像反映・自動保存準備の単独停止による原因特定には至っていない。これらを原因と断定したり、本PRの対策を修正済みと報告してはいけない。\n\nまた本PRは2026-10-24のPR #49（commit `980eab54`）から直接分岐しているため、PR #50〜#60の後続修正を含まず、ユーザーにとって**旧版へ戻った状態**だった。これはキャンバスのみを元に戻すという意図に対して広すぎるロールバックであり、今後の採用基準にしない。\n\n**このPRは調査履歴としてのみ残し、マージ不可。実機再検査を依頼しない。** 次の作業はユーザーが使っていた機能を保つ最新の適切な開発成果から開始し、UI/入力/描画の違う版を比較した結果だと明記すること。\n\n---\n## 目的\nAndroid実機で太いGペン直後にTouch実数が0のまま、線を正式反映したとき初めて1へ変わる不具合を原因別に検査。従来の推測による連続改修ではなく、**PR #49を基準に1回の試験で1条件だけ停止**する。\n\n## 試験モード（4リンク）\n1. `ablate=baseline`: PR #49の描画・画面反映・保存処理を一切変更しない比較用。\n2. `ablate=overlay`: ペン離し直後から一時的な仮線の生成・画面反映を止める。正式描画と保存は継続。\n3. `ablate=presentation`: ペン離し直後から仮線/完成画像の画面反映を停止し、worker応答だけ受ける。表示が古くなることは意図した診断結果。正式描画と保存は継続。\n4. `ablate=persistence`: 正式描画は継続し、作品の履歴確定後の自動保存用データ準備・チェックポイント登録を止める。このモードの内容は安全に保存されないため警告。\nさらに独立した `control.html`: GPU・Illustroを読み込まず、指で線を引いた後にTouch実数1/2/0を確認する対照実験。\n\n## 結果の観測\nすべてのモードで同じ非干渉の `window` capture入力記録、Touch実数、Pointer指数、最大入力遅延、時計の停止時間を右上に表示。モード切替は各URLで独立し、通常版には影響なし。\n\n## 自動検査\n4000pxキャンバス・太いGペンで正式描画の完了を人工的に止め（画面反映停止のみゲートなし）、WebGL2/WebGPUで各モードの入力1/2/0と、停止対象が有効なこと、既存PR49仮線/背景回帰を検査。これは物理Android特有の停止の再現とは区別する。\n\n## 合格基準\n同じ端末でbaseline=失敗、ある1条件=成功なら、その変更に関係する処理を重点調査。**実機検査が終わるまで根本原因特定・修正完了とは宣言しない**。ブランチDraftのまま、元のPR49/PR61は不変更。"
+    },
+    {
+      "number": 61,
+      "url": "https://github.com/totoro0419/illustro/pull/61",
+      "title": "M10: 指の入力が線の確定まで止まる原因を実測調査",
+      "head": "83b7c7f538164d8e21a76e55172372b9cb8d3bf0",
+      "headBranch": "investigate/M10-touch-main-thread-2026-10-25",
+      "base": "980eab54f7f2957b809ccaf6f8a0e1d0df1ae9a3",
+      "baseBranch": "fix/M10-preview-black-rectangle-2026-10-24",
+      "body": "## 理由\nAndroid実機で、ペンを離した直後に指を置いてもTouch実数が0のまま、線の正式反映メッセージ後に1となる。前回までのPR #50-60で何度も修正したが実機では直っておらず、CPU/ GPU/入力受付/表示更新のどこが待っているか未確定。\n\n## 依存関係を壊さない調査\n- 安定していたPR #49（`980eab54f7f2957b809ccaf6f8a0e1d0df1ae9a3`）から直接分岐。ブラシ・描画Worker・操作・GPU・保存の実装を一切変更しない。\n- `?inputTrace=1` で画面の上に小さな診断表示を付ける。Window captureで本当のタッチイベントの到達時刻とブラウザーのタイムスタンプとの差を記録。`setInterval`の遅れ、`requestAnimationFrame`の途切れ、Long Tasks、正式反映ステータスまでの時間も測定。\n- `queueLatestCommit()`内の同期保存準備、および`onCommitted`から画面の表示変更までにかかる時間もメインスレッド側で記録。\n- GitHub Actionsで4000x4000px、太さ230のGペン・120点ストロークを描いてすぐ1→2本の指を置く。実GPUゲートで擬似待機させるだけではなく、ChromiumのCPU 6x throttle下で実際の処理を行いCPUプロファイルとイベント遅延、LongTask、画面更新間隔を出力。WebGL2 / WebGPU両方を観測。検査は『症状が再現されたか』を明確に分け、実機での停止原因と同一だと自動で断言しない。\n- 計測専用HTMLとPR49からの限定的なコード変更を独立gh-pagesへ公開。通常版にはトレースしない。\n\n## 合格条件\n原因が数値で特定できるまで『解消』と宣言しない。実機の入力受付の有無と表示遅延、保存処理を混同せず、観測後に原因に対応する最小の修正を設計。PRはDraft。"
+    },
+    {
+      "number": 60,
+      "url": "https://github.com/totoro0419/illustro/pull/60",
+      "title": "M10: 太い・長い線の正式登録計算を分割し、確定前の指入力を待たせない",
+      "head": "6586b3f8c9d76e7d09d6b263b9680ed9a40b2404",
+      "headBranch": "fix/M10-yield-stroke-commit-input-2026-10-25",
+      "base": "7d0c8f5dcc731b142de8c6474dc7447de0481801",
+      "baseBranch": "fix/M10-touch-input-yield-display-work-2026-10-25",
+      "body": "## 実機の継続不具合\nユーザーはPR #59でも線の正式反映前に指を置き続けてもTouch実数0のまま、正式反映時点で1になると報告。これは表示の数え方の問題だけではない。親JSを同期的に1.6秒占有したテストではiframeも約1.44秒止まった。PR #58/59の独立判定画面・描画画像反映の改善だけでは実機不合格。\n\n## 追加した具体的な待ちの撤去\n`apps/editor/src/strokeCommit.ts`の主スレッド処理を確認。`CoreStrokeDocumentPort.commitStroke`は線の生入力を逐次検証し、全コマンドの接触区画を計算し、区画別の履歴にまとめる計算を、線確定後に同期的に続けていた。太いブラシや長い線では入力イベントを割り込ませられない可能性がある。\n- 生入力の予測データ検査（256件ごと）、スタンプの通過区画の算定（64件ごと）、区画ごとの履歴組み立て（128件ごと）で処理時間を確認し、3msを超える場合は一度入力処理に時間を譲る。区画範囲・順序・線の正確さはそのまま。\n- 操作の途中での実データ書き込みは避け、元の`tx.commit()`は完成した結果を1回だけ原子的に登録する。予測入力を拒否した場合に履歴が増えないことを維持。\n- Vitestに18,000スタンプの正式登録中でも別の入力イベント相当のタイマーが動けること、20,000個の生入力検査で予測入力を正確に除外しUndoの記録を壊さないことを追加。\n- WebGL2/WebGPUの表示と独立iframeの認識テストも維持。PR #59での任意機能の変更なし。\n\n## 制約\nAndroid実機でのフリーズがこのCPU計算だけに起因すると断定できない。上記検証後もユーザーの実機で通知前に1/2に変わらない場合、不合格。PRはDraftのまま。"
+    },
+    {
+      "number": 59,
+      "url": "https://github.com/totoro0419/illustro/pull/59",
+      "title": "M10: 線の確定前にタッチ数が止まる問題へ、画面反映の処理分割で対応",
+      "head": "7d0c8f5dcc731b142de8c6474dc7447de0481801",
+      "headBranch": "fix/M10-touch-input-yield-display-work-2026-10-25",
+      "base": "ec31752568596f574408f5193add0126dd1f6e14",
+      "baseBranch": "fix/M10-touch-counter-isolated-frame-2026-10-25",
+      "body": "## 観測・方針\nユーザー実機ではPR #56/57のTouch実数が「線を作品に反映しました」の直前まで変わらない。PR #58では別のiframeにしても、親の画面側で1.6秒間CPUを占有する検査では表示が約1.44秒遅れ、**iframeだけでは直らない**ことを検査で確認。GPU占有や入力検出が唯一の原因とは確定していない。\n\n## このPRの実装\n- 引き続き正常なPR #49の描画・移動・GPU構成を起点とする。QA URL `?touchProbe=1` のときに限り、完成画像の512px区画をメイン画面に反映する処理を1区画ずつ実行し、その合間に次の入力を処理できるようメイン処理を譲る。処理全体の完了まで正確な順序の確認を維持。\n- 正常な通常用紙表示で、区画画像が全て準備できている場合は、重複する全画面GPU画像の読み込みを避け、保持された正確な区画画像をそのまま使う。特殊な表示、未準備の画像などは元の反映を維持。\n- `sandbox=allow-scripts`の独立判定iframeをペンアップの同じ入力処理で表示。親画面の更新通知には頼らない。ただし単独でメインスレッドを完全に迂回できるとは主張しない。\n- WebGL2/WebGPUの正式GPU確定を意図的に止める試験を維持し、実際の `applyCooperatively` へ合計1秒以上に相当する仕事を渡している間も指1本・2本の表示が更新されることを試験。人工的な同期無限仕事は中断できないため、テスト項目から絶対的な主張を撤回。\n\n## 既存機能への影響・未確認\nQAでない通常版には変更は適用されない。仮線透明、周辺背景、連続ストローク、Undo/Redo、保存の回帰を確認する。Android実機で確定前もTouch実数が1/2になることは未確認。PRをDraftで維持。"
+    },
+    {
+      "number": 58,
+      "url": "https://github.com/totoro0419/illustro/pull/58",
+      "title": "M10: GPU確定待ちでも指の数が変わる独立iframe判定面へ変更",
+      "head": "ec31752568596f574408f5193add0126dd1f6e14",
+      "headBranch": "fix/M10-touch-counter-isolated-frame-2026-10-25",
+      "base": "a8804cd7d31534eebae666e49db3331022dca28a",
+      "baseBranch": "qa/M10-direct-touch-capture-2026-10-25",
+      "body": "## 実機で継続する問題\nPR #49基準のPR #56/57でも、太い線の後「線を作品に反映しました」が出る前はTouch実数が1/2にならない。ブラシ以外の数値描画までアプリのメイン画面に依存させた以前の対策は不十分。\n\n## このPRの修正\n- PR #49で動作していたキャンバス描画/移動/GPU/保存関連コードは変更しない。\n- **指を数える表示だけ**をsandboxed iframeの別文書/別スクリプトとして独立。iframe内でタッチ入力を直接受け、`touchstart/move/end`やPointer代替から「0,1,2」を即時描画。親のアプリの更新ループやGPU/Worker返信、`線を作品に反映しました`のステータスとは依存関係を持たない。\n- 描画用の指/ペンが離れた瞬間に、window capture段階でiframeの検査面を自動表示する。同期の描画確定待ちやrequestAnimationFrameを挟まない。表示中は描画を一時停止し、右上のボタンで元に戻す。\n- iframeに`sandbox=\"allow-scripts\"`を指定し、親DocumentのJSと接触数の記録を共有しない。iframeは本体と別の入力先で、端末で入力が遅れても数値を捏造しない。\n- WebGL2/WebGPUで正式GPU反映を意図的に止めた状態でも、iframe内部の表示が1→2→0となるPlaywright検査と実際のスクリーンショットを追加。\n\n## 注意\nこの版は**接触実数を認識させるためのQA検査版**。キャンバス移動の修正はまだ行わない。ブラウザーがiframeを同じ処理で扱う端末での独立性は完全保証できないため、実機合格までDraft。PR #49/PR #57は変更しない。"
+    },
+    {
+      "number": 57,
+      "url": "https://github.com/totoro0419/illustro/pull/57",
+      "title": "M10: 指の1本・2本を確実に数える独立タッチ判定面を追加",
+      "head": "a8804cd7d31534eebae666e49db3331022dca28a",
+      "headBranch": "qa/M10-direct-touch-capture-2026-10-25",
+      "base": "9d92ba2fcf9700d899d2cac32e2996f0f10fccd6",
+      "baseBranch": "qa/M10-passive-touch-detection-only-2026-10-25",
+      "body": "## ユーザーからの最新の指摘\nPR #56の window capture で `Touch実数` が1/2にならない。キャンバス表示はすでに問題があるので触らず、まず指の本数を実際に数えられる判定専用の仕組みだけを完成させる。\n\n## 修正\n- PR #56を継承し、キャンバス本体はPR #49のコードのまま。ブラシ/ナビゲーション/GPU/正式描画/Workerのコードは一切変更しない。\n- `?touchProbe=1&captureTouch=1` では、キャンバス上に独立した**透明な専用タッチ受取面**を出す。画面を指で直接押した本数を数字で大きく表示する。TouchEventとPointerEvent両方を独立収集し、TouchEventがない環境ではPointerEventから判定する。両方式を合算して誤って2本と数えることは禁止。\n- 専用面は描画を一時的に遮る（検査モードのみ）。「描画に戻す」ボタンで元のキャンバスに復帰。通常版と`touchProbe`なしでは判定面が存在せず、操作はPR #49と同一。\n- **別の独立QAページ**を作り、IllustroのGPUや描画エンジンを読み込まず指1本→1、2本→2、離す→0を大きな数字で検査できるようにした。そこからアプリ内の直接判定版を開ける。\n- 自動テストはWebGL2/WebGPUの重い正式描画を意図的に止め、独立タッチ面で1/2/0を数えることと、画面の位置/ズームが変わらないことを確認する。独立HTMLでも1/2/0テスト。\n\n## 安全・未確認\n今回の主目的は「タッチ判定が必ず1/2と表示されるか」の検査で、キャンバスを操作できない既知バグの修正は行わない。ブラウザやOSがタッチイベントを配信しないケースまで数字を捏造しない。Android実機の受付結果は未確認。PRはDraftのまま。"
+    },
+    {
+      "number": 56,
+      "url": "https://github.com/totoro0419/illustro/pull/56",
+      "title": "M10: PR #49へ戻し、キャンバス無変更のタッチ判定のみ追加",
+      "head": "9d92ba2fcf9700d899d2cac32e2996f0f10fccd6",
+      "headBranch": "qa/M10-passive-touch-detection-only-2026-10-25",
+      "base": "980eab54f7f2957b809ccaf6f8a0e1d0df1ae9a3",
+      "baseBranch": "fix/M10-preview-black-rectangle-2026-10-24",
+      "body": "## ユーザー実機報告と方針\nPR #55では線が正式確定するまで『Touch実数』すら更新されず、キャンバスの挙動も以前より悪くなった。操作システムの修正を重ねるのを止め、バグる前のPR #49へ戻して**指が届いているかの調査だけ**を行う。\n\n## 正確な開始位置\n- `PR #49` (`fix/M10-preview-black-rectangle-2026-10-24`) commit `980eab54f7f2957b809ccaf6f8a0e1d0df1ae9a3` から直接分岐。\n- PR #50〜#55の描画表示/モード/タッチ入力変更を含めない。PR #49に含まれる仮線の透明度と奥側の背景色固定は維持。\n- `apps/editor/src/main.ts` は新しい検査用モジュールを `?touchProbe=1` で有効化する2行のみ追加。`apps/editor/src/brushSurface.ts`、`apps/editor/src/canvasNavigation.ts`、`packages/brush-rt`等はPR #49と同じ内容で一切変更しない。\n\n## 実装\n- `passiveTouchProbe.ts`: **windowのcapture段階**で `TouchEvent` と `PointerEvent` を記録。現在のTouch実数、キャンバス内の指の本数、開始・移動・終了・キャンセルの回数、Pointer指の現在数・開始・終了を別々に表示。\n- 画面右上の記録表示は `position:fixed` で作品の表示面の外、`pointer-events:none`。`preventDefault`, `stopPropagation`, `setPointerCapture`, CSSキャンバス変形、GPU/Workerへの操作、ジェスチャーモードの変更は一切行わない。QA URLでのみ有効。\n- 既存のWebGL2・WebGPU回帰、正式GPU描画の完了を意図的に止めた状態でもTouch実数を測るPlaywright検査を実施。検査版のみ独立ページへ公開。\n\n## 実機受け入れ基準\nまず1本指・2本指を置いた時にTouch実数が `1`,`2` になること。太いGペン直後、正式反映前にも同様に数が変わるか。**操作不能の修正は今回の対象外**。コード/自動検査と物理Androidでの動作を分けて報告。元のPR #49および既存公開QA URLには変更を加えない。Draftのまま実機確認。\n"
+    },
+    {
+      "number": 55,
+      "url": "https://github.com/totoro0419/illustro/pull/55",
+      "title": "M10: 正式反映前の2本指無反応と、指を置いた瞬間のキャンバスずれを修正",
+      "head": "f07fc534eb6b3c5050631e33c7e0acfcee49c483",
+      "headBranch": "fix/M10-touch-press-no-jump-2026-10-25",
+      "base": "09b6caf62c6bea6ca3a110c7035cc34a36ca9271",
+      "baseBranch": "fix/M10-touch-navigation-input-2026-10-25",
+      "body": "## ユーザー実機での観測\n- 「線を作品に反映しました」になるまで指を置いた判定すら入らない。\n- しかし次の線は描き始められるので、アプリ全体の過負荷・GPUフリーズとは整合しない。\n- さらに、指を置いた瞬間にキャンバスが少しずれる。\n\n## 入力原因に対応する変更\n- タッチ操作をブラシ用 `PointerEvent` と別のネイティブ `TouchEvent` で認識。画面上にある指を正確なTouch.identifierで管理し、Pointer captureが別ストリームと衝突しないようにする。\n- `CanvasNavigation` は触れた瞬間に画面の表示を変更しない。1本指・2本指とも、3px相当の指の有意な移動後にはじめて移動モードに入り、元の指の位置を基準に変換する。タッチ時の小さな揺れで作品がずれないようにする。\n- `CanvasNavigation.begin()` は、モード取得に失敗した場合に不正な「操作中」状態が残らない順序へ修正。\n- ネイティブTouchの受け取りとPointerの受け取りを左上のQAログへ両方表示。GPUが忙しい間に指を置いて認識されているかを実機で判別可能。\n- ブラシ描画と移動は同時に行わない。指描画中に2本目を置いたら指描画を終了/取り消してから移動。ペンの描画中は指操作に移らない。\n\n## 検証\n- 新しいVitest: 単に触れた時点では表示位置/状態が変わらない、指の微小揺れは無視、意図した2本指操作は拡大・回転・移動、失敗後の復帰を検査。\n- Playwright: CPU仮線と作品画像を表示し、正式GPU確定を意図的に止めてからネイティブ2本指でタップ・小さな指揺れ・大きく移動を行う。実画面のスクリーンショット比較も実行。WebGL2/WebGPU。\n- これまでの透明仮線、固定背景色、Undo/Redo、保存の回帰を含む。\n\n実機のAndroid/タブレットは未検証。PRはDraftで、実機が動くまで最終合格にしない。PR #54の旧確認URLを上書きしない。"
+    },
+    {
+      "number": 54,
+      "url": "https://github.com/totoro0419/illustro/pull/54",
+      "title": "M10: 次の線は描けるのにキャンバス移動だけ効かない入力経路を修正・検証",
+      "head": "09b6caf62c6bea6ca3a110c7035cc34a36ca9271",
+      "headBranch": "fix/M10-touch-navigation-input-2026-10-25",
+      "base": "7b6de51911fee5ec628bf98cd379978d29a7bb92",
+      "baseBranch": "feature/M10-standby-retained-picture-2026-10-25",
+      "body": "## 実機の新情報（重要）\nユーザーは、正式描画の反映前にも**別の線を描き始められる**と報告。アプリ全体やGPUが固まるという説明には合わない。これまでのGPU処理抑制・待機画像強化を主因とする推測を撤回し、2本指がCanvasNavigationへ届くかを検査する。\n\n## コードから確認した入力受付の弱点\n`BrushSurface.down` の `e.target===canvas || e.target===surface` という厳しい判定は、画面上で別の表示要素（完成済みの作品や仮線を含む）に指が当たると、その指を認識しない。PointerEventsが子要素で伝播停止されても入力を失う。2本指のうち1本が失われれば描画はできても移動だけ認識されない。\n\n## 修正\n- 入力を固定された `.surface` の**キャプチャ段階**（子要素への伝達より先）で受け取る。子要素ごとのホワイトリストを撤去。編集用ボタン・切り抜きハンドルは対象外とする。\n- `?gestureDebug=1` で左上に指を置いた回数・認識中の指・状態・移動の命令回数を表示。入力が欠けたのか、命令が通っても描画だけ止まったのか実機で識別できる。\n- 実際のブラウザー2本指入力を、描画面の上に置いた子要素が `stopPropagation` する状態でも実施。Workerの正式GPU確定を故意に止め、Pan/Zoom/Rotate命令だけでなく、画面のスクリーンショット上の**作品ピクセルが移動すること**まで確認。WebGL2/WebGPU両方。\n- 前回の独立保持画像、仮線の透明表示、背景色、Undo/Saveは維持して最小変更。\n\n## 未確認\n物理スマホ固有の操作イベントの欠落や実画面更新問題は実機検査で確定する。自動検査成功だけで最終合格としない。"
+    },
+    {
+      "number": 53,
+      "url": "https://github.com/totoro0419/illustro/pull/53",
+      "title": "M10: 待機専用の保持画像と仮線用表示を実際に分離する",
+      "head": "7b6de51911fee5ec628bf98cd379978d29a7bb92",
+      "headBranch": "feature/M10-standby-retained-picture-2026-10-25",
+      "base": "12a72e5ab81bedf6012c544825c3dfa0299abf73",
+      "baseBranch": "feature/M10-explicit-standby-draw-navigate-2026-10-25",
+      "body": "## ユーザー要件\n従来の「待機・描画・操作」ラベルだけの分離は不合格。ペンを離したら正式描画の完了を待たず待機へ戻し、待機中に保持した独立表示画像を上から見せる。描画とキャンバス操作は同時には実行しない。描画中以外に正式反映が裏で続いても表示が自由に動く。\n\n## 実装\n- `StandbyPicture`: 独立した viewport サイズの保持用Canvasを追加。すでに表示された作品画像と512pxグループを待機中に取り込み、旧画像は新しいキャプチャが用意できるまで保持。取り込みは pointer ハンドラーではなく idle 時に行う。透明/消しゴム/下層レイヤーの元データやGPU確定処理は変更しない。\n- `ViewportScene`: 正式画像の表示、待機画像、仮線専用 `.illustro-ink-plane` の3面をDOMで分離。描画モードでは待機画像を隠し、待機・操作モードでは完成済み表示を保持し、仮線は常に上層へ出す。操作中は全体のCSS位置変換のみ。\n- `DrawingHost`: 描画/待機/操作への通知、正式描画画面の更新時に待機画像を無効化・再準備。仮線の描画用要素を専用の面へ隔離。GPUジョブと正式データ/Undo/保存はPR #51ベースのまま。\n- `BrushSurface`: PR #52の排他3モード管理から実際の表示切替を行う。ペンアップ時はWorkerの確定を待たず待機画像に戻す。\n- オフラインビルド、Node/ブラウザ両方の検査に新モジュールを収録。WebGL2/WebGPUおよびGPU正式反映をわざと止めたときの検査で、保持画像が仮線の下に存在することを確認する。\n\n## 重要な未検証点\nDOMの独立面が作られたことと物理スマホのGPU占有を消せたことは別。スマホ/タブレットで「線を作品に反映しました」と表示される前から滑らかに動くか、画質/Erase/Undo/Saveの実機確認は引き続き必要。リポジトリ本流には未マージ。Draft維持。\n"
+    },
+    {
+      "number": 52,
+      "url": "https://github.com/totoro0419/illustro/pull/52",
+      "title": "M10: 待機・描画・キャンバス操作を排他的な3モードに分離",
+      "head": "12a72e5ab81bedf6012c544825c3dfa0299abf73",
+      "headBranch": "feature/M10-explicit-standby-draw-navigate-2026-10-25",
+      "base": "26580d3ba42258d61e918e8c4b0e5b3e044733be",
+      "baseBranch": "fix/M10-gesture-gpu-preemption-2026-10-25",
+      "body": "## 目的\nユーザー方針：「ペンや指を置いておらず、キャンバスも操作していなければ待機モード」。描画とキャンバス操作は同時実行しない。正式描画/GPU反映は別の非同期作業であり、待機モードの終了を遅らせない。\n\n## 今回の変更\n- `CanvasInteractionMode` を追加。画面の操作権を **standby / drawing / navigation** の3状態だけで管理し、描画と移動が重ならないようにする。\n- ペンを離した瞬間、正式描画の完了を待たずに **standby** に戻る。そこから2本指移動を受け付ける。画像の正式反映はバックグラウンドで継続。\n- スタイラスで描画中は指で移動しない（同時操作の禁止）。指描画中に2本目を置いた場合は1本目を終了・取り消してから操作モードへ切り替える。\n- 操作モード中は新しいストロークを受け付けない。操作終了後、待機へ戻す。\n- 状態を `.surface[data-interaction-mode]` と検査情報で確認できるようにした。\n- 状態管理の単体テスト、正式GPU反映待ち中の実2本指入力テストを追加し、従来のWebGL2/WebGPU・仮線・背景・履歴のテストも維持。\n\n## 設計上の留保\n既存の表示画像群と仮線を保持したまま動かす構成を利用する。**新しい1枚画像への統合キャプチャや物理GPU占有の根本解決は今回の変更では実施しない**。モード分離と実機の快適さは別の合格条件。実機が改善するまでDraftのままにする。元のPR #51とその確認用URLは維持する。"
+    },
+    {
+      "number": 51,
+      "url": "https://github.com/totoro0419/illustro/pull/51",
+      "title": "M10: 正式描画のGPU処理が進行中でもキャンバス操作を優先する",
+      "head": "26580d3ba42258d61e918e8c4b0e5b3e044733be",
+      "headBranch": "fix/M10-gesture-gpu-preemption-2026-10-25",
+      "base": "798dd97b82553e4e3cc88a9b8c2f86dba63c6a23",
+      "baseBranch": "fix/M10-pending-stroke-navigation-2026-10-24",
+      "body": "## ユーザー実機の不合格状況\n「線を作品に反映しました」と表示されるまでは仮線の上でキャンバスを動かせない。操作受付順の修正（PR #50）だけでは改善しなかった。\n\n## コードから確認した原因\n前回はブラシ入力で2本指操作を受付する順序だけを修正した。しかし `DrawingHost.beginViewportNavigation()` はメイン側の画面を移動するだけで、`drawing.worker.mjs` の正式描画ループには操作中と通知しない。`GpuRenderer.frame()` は背後で正式GPU処理を継続し、ペン離し後180ms経過で一度に処理する量も増える。画面側に `transform` を設定できることは、実際にGPUが合成して滑らかに映ることの証明ではなかった。\n\n## 修正\n- 2本指開始で即座にDOMの位置を変え、非同期の `navigationHold` メッセージで描画Workerに新規GPU処理停止を通知する。\n- Workerは操作中の新規GPU正式描画・画像送信を控え、終了後に元の処理列を残したまま再開する。送信済みGPU仕事の中断はできない。\n- 指操作中に到着した巨大ImageBitmapの画面反映も後回しにし、操作中のメインスレッドへの負荷を避ける。\n- 未確定の線が残る間はGPUバッチを1区画相当に抑え、完了通知を早く出す目的でGPU処理を占有させない。\n- WebGL2/WebGPUの仮線の透明度・背景色・2本指操作を再検査。描画と保存の正式データは変更なし。\n\n## 未確認事項\nブラウザー自動検査では物理スマホのGPU占有と実際の指-to-display遅延は測れない。実機不合格を解消したと判断するのは実機で確認した後。Draftを維持。"
+    },
+    {
+      "number": 50,
+      "url": "https://github.com/totoro0419/illustro/pull/50",
+      "title": "M10: 仮線・正式確定待ちでも2本指操作を優先する",
+      "head": "798dd97b82553e4e3cc88a9b8c2f86dba63c6a23",
+      "headBranch": "fix/M10-pending-stroke-navigation-2026-10-24",
+      "base": "980eab54f7f2957b809ccaf6f8a0e1d0df1ae9a3",
+      "baseBranch": "fix/M10-preview-black-rectangle-2026-10-24",
+      "body": "## 現象\nユーザー実機では、仮線が正式画像に確定するまでキャンバス移動・拡大・回転ができない。\n\n## 確認した設計上の問題\n`apps/editor/src/brushSurface.ts` では、指描画有効時の最初の指がブラシとして登録され、2本目の `pointerdown` が来ると先に `finishStroke()` を実行してから `navigation.touchDown()` を呼ぶ。またペンが描画中の場合まで強制的に `finishStroke()` する。ホイールも `pointer!==null` で禁止されている。これは操作を正式描画から独立させる要求と矛盾。\n\n## 修正\n- 2本目の指は、作業を確定・破棄する前にキャンバス移動として即時登録する。\n- 1本目の指が静止したままなら意図しない描画を非同期で取り消し、既に描き進めた線は保存のため非同期で確定する。\n- ペンの描画中に指を置いても、ペンで描いている線を勝手に終了させない。\n- ペンで描画中もホイール拡大を受け付ける。\n- 正式GPU描画を故意に止めた状態で、実際の2本指によるパン・ズーム・回転、余計な線が増えないこと、WebGL2/WebGPUと背景色・Undoの回帰を検査する。\n\n## 受け入れ条件\n実機の太いブラシで確定前の2本指操作が引っかからないこと、点滅・黒化・線の欠落や二重描画がないこと。自動検査合格でも物理端末の合格とはしない。前のPR #49の修正は維持。Draftで公開。"
+    },
+    {
+      "number": 49,
+      "url": "https://github.com/totoro0419/illustro/pull/49",
+      "title": "M10: 仮線の黒い長方形を防ぐ透明表示修正（実機確認待ち）",
+      "head": "980eab54f7f2957b809ccaf6f8a0e1d0df1ae9a3",
+      "headBranch": "fix/M10-preview-black-rectangle-2026-10-24",
+      "base": "2d383bf19b18eb72a19816f2d340f33c4a6c596c",
+      "baseBranch": "feature/M10-brush-settings-2026-10-22",
+      "body": "## 目的\nPR #41（削除前へ復元した版）で、太いGペン等の仮線表示中、筆跡周辺が黒い長方形となり、正式確定で消える現象に対処する。ユーザー実機スクリーンショットを基準とする。\n\n## 対応\n- `packages/brush-rt/src/drawing-host.mjs`: 仮線専用BitmapRenderer表示を、透明度を明示したCanvas2D画像合成に置き換える。更新時の透明クリアとImageBitmapの閉鎖を実施。正式描画、ブラシ計算、Undo/Redo、保存方式は変更しない。\n- `scripts/m10-preview-alpha-regression.mjs`: 正式描画を保留させ、仮線の画像の透明画素と、実際の画面に黒い長方形がないことをWebGL2/WebGPUで検査する。\n- `.github/workflows/m10-preview-alpha.yml`: 既存コードの回帰検査と専用検査。\n\n## 検証上の留保\n画像から黒い矩形が仮線表示領域に一致するためBitmapRendererの透明合成を修正対象としたが、物理タブレット固有の原因は未確定。自動テスト成功と実機合格は別。CI結果とスマホ・タブレットでの再確認まで**Draft**維持。既存復元ブランチ／mainは変更しない。"
+    }
+  ],
+  "comments": [
+    {
+      "id": 6396801675,
+      "url": "https://github.com/totoro0419/illustro/pull/64#issuecomment-6396801675",
+      "created_at": "2026-10-25T11:00:46Z",
+      "body": "実機原因調査用ビルドを公開しました。今回のユーザー実機不合格はPR #63にも明記済み。PR #64は修正完了扱いしません。\n\n- GitHub Actions: https://github.com/totoro0419/illustro/actions/runs/40186889330\n- verify / publish: ともに GitHub Actions 成功\n- GitHub Pages: https://totoro0419.github.io/illustro/qa/m10-real-input/\n- 公開先 `gh-pages` の案内HTML、`app/index.html`、エディターJS、CSSの実在をそれぞれGitHub上で取得確認\n- 実機操作不能は **未解決**。PR61の時間計測器を最新のPR #63版Illustroに移植し、通常描画を再現した後、記録をコピーできるようにした\n\nユーザーからログが届いたら、`pointerup`→`touchstart`→`formal-confirmation` の時間関係、`timer-stall`/`frame-gap`/`longtask`、`committed-ui`/`save-prepare`の占有区間を直接対応づけて原因を絞る。ソフトウェアブラウザー上の疑似入力合格を実機修正合格と解釈しない。"
+    },
+    {
+      "id": 6396897243,
+      "url": "https://github.com/totoro0419/illustro/pull/64#issuecomment-6396897243",
+      "created_at": "2026-10-25T11:11:07Z",
+      "body": "## Android実機ログの解釈修正 — ユーザー証言を優先（2026-10-25）\n\nユーザーは「仮線表示中、本線確定前に **確実に** 指でドラッグとピンチイン/アウトした」と明言。操作しなかった可能性を説明に用いない。\n\nユーザーが提供した `inputFreezeTrace` によれば：\n- 1回目 `pointerup pen 21659.7` → `formal-confirmation 21934.8`（275ms）、この間に `window capture` の `touchstart` / `pointerdown touch` は一件もない。次の記録は `22273.7`。\n- 2回目 `pointerup pen 26911.7` → `status-write 27217.4`（306ms）、この間に指イベントなし。次 `27510.6`。\n- 3回目 `pointerup pen 40560.0` → `status-write 40839.8`（280ms）、この間に指イベントなし。次 `41149.1`。\n- 以上の各250〜300ms区間に `timer-stall` / `frame-gap` / `longtask` は記録なし。別時刻の `maxFrameGap=7632.5ms` と `timer-stall≈1000ms` をこの不具合の根拠にしない。\n- `save-prepare` は0.4〜1.3ms。直接の同期保存ブロック説はこの3回では不支持。\n- 指操作は確実にあったのに Window capture に両系統の開始イベントがないため、ページ内のイベント対象変更やアプリの操作受付条件より**上流**で入力抑制・配送欠落が起きた疑いが強まった。ただしOSかブラウザーかタッチハードウェアかは未確定。\n- ログは `pointerdown pen` を記録しており、スタイラス入力の関与が確実。Android/AOSP公式はペン/掌の誤接触防止で指ポインターをアプリへ送らず破棄する動作と、ペンのホバー検出を説明（https://source.android.com/docs/core/interaction/input/touch-devices）。**今回の抑制がパームリジェクションかは仮説**、断定禁止。\n\n次は OS/Chromeのペン近接による指抑制 と 画面合成負荷 を切り分ける。既存のPC疑似イベント合格（PR #63）で実機不合格を覆さない。実機正常動作は未達。"
+    },
+    {
+      "id": 6413153148,
+      "url": "https://github.com/totoro0419/illustro/pull/64#issuecomment-6413153148",
+      "created_at": "2026-10-26T09:54:54Z",
+      "body": "## 原因究明の停止位置を再確認（2026-10-26）\n\n現時点では**根本原因未特定・調査未完了**。このPRはユーザー実機で指が本線確定前に消失する現象の **Webページ側のログ** の収集までであり、Androidドライバー/OS/Chrome間のどこでイベントを失うかを確定していない。疑似指入力検査のPASSは実機の根拠ではない。\n\nAndroid公式資料によると入力はタッチドライバー→InputReader→InputDispatcher→アプリへ配送され、パームリジェクションは該当入力をアプリへ送らず破棄し得る（https://source.android.com/docs/core/interaction/input/touch-devices）。**原因がパームリジェクションと確定したわけではない。**\n\n今後の実行手順と、証拠の有無で判断する表を追記：\nhttps://github.com/totoro0419/illustro/blob/investigate/M10-real-device-event-stall-2026-10-25/qa/m10-real-input/ROOT_CAUSE_PROTOCOL.md\n\n次の決定的な分岐点は、同じ接触が `adb shell getevent -lt` に存在するか、それがChrome `window capture` に届くかの比較。生入力が存在してもWebが欠落するなら、更にAndroid入力配送のログが必要。現状は物理Android端末にアクセスできないため、その記録を**未取得**とする（失敗/未発生と混同しない）。\n\n**修正実装はしない／原因の推測を結論として記録しない／実機の境界特定まで未完了のまま管理する。**"
+    },
+    {
+      "id": 6396606096,
+      "url": "https://github.com/totoro0419/illustro/pull/63#issuecomment-6396606096",
+      "created_at": "2026-10-25T10:39:14Z",
+      "body": "## 検証結果と公開（2026-10-25）\n\n- ブランチ: `fix/M10-live-touch-during-pending-2026-10-25`\n- CI commit: `902d746465db1531f92b1fbe71befb5956d111a3`\n- GitHub Actions run: https://github.com/totoro0419/illustro/actions/runs/40185429585\n- `verify` ジョブ完了、結論 `success`。証拠アーティファクト `m10-live-touch-evidence` とビルド成果物 `m10-live-touch-app` を確認。\n- `npm run brush:build`、`prep:check`、`core:check`、`brush:regression`、Editor Vitest、TypeScript、Vite の各検査を通過。\n- ChromiumソフトウェアGPUの WebGL2/WebGPU で、4000px太いGペン後の formal GPU の完了を保留中、上層の入力妨害要素を置いたまま Touch/Pointer 受理・移動・拡大・回転・誤描画なしを確認。黒い四角・キャンバス周辺背景の回帰も合格。\n- GitHub Pages ブランチに `qa/m10-live-touch/index.html` と `qa/m10-live-touch/app/index.html` が実在することを再取得して確認。推定アクセス先: https://totoro0419.github.io/illustro/qa/m10-live-touch/\n- 実機Android/Chromeで「仮線表示から本線反映完了までの入力停止が解消すること」は未確認。**実機で合格するまでDraftのまま・統合しない。** 一般のHTTPクライアントからPages URLへの到達は確認できなかったため、公開先のファイル実在とURL疎通は区別する。"
+    },
+    {
+      "id": 6396693960,
+      "url": "https://github.com/totoro0419/illustro/pull/63#issuecomment-6396693960",
+      "created_at": "2026-10-25T10:48:46Z",
+      "body": "**ユーザー実機不合格（2026-10-25）:** PR #63公開修正版でも、仮線表示〜本線確定までの間、指の入力数とキャンバス操作は一切改善しなかった。CIの `formal` gateと疑似タッチでの PASS は物理Androidでの症状を再現していないので修正完了の証拠にしない。ヒット対象のcapture化と画面転送の分割だけでは解決しなかった。今後このPRを合格・マージしてはならない。原因はまだ未確定で、実機上のJS停止（定期タイマー・rAFが止まるか）とブラウザー入力配送（window captureの受信時刻）の区別が必要。"
+    },
+    {
+      "id": 6396335864,
+      "url": "https://github.com/totoro0419/illustro/pull/62#issuecomment-6396335864",
+      "created_at": "2026-10-25T10:09:52Z",
+      "body": "## 新しい実機結果と対照検査の改訂（2026-10-25）\n\nユーザーはPR #62の`control.html`（Illustro/GPU/Workerを読み込まない対照実験）でも指の本数が正常に変わらないことを確認した。これを不合格として受け入れ、PR #62を修正完了扱いしない。\n\n旧`control.html`にある`touchSeen`フラグは、一度TouchEventを観測した後、PointerEvent側だけが届いても指の本数を更新しない。このロジックには判定の盲点があるが、ユーザー実機の症状の原因と確定したわけではない。\n\n独立検査を新たに追加した。\n- GitHub Pages: https://totoro0419.github.io/illustro/qa/m10-native-input-check/\n- 保存先: `gh-pages/qa/m10-native-input-check/index.html`\n- commit: `414ca4e85e3b91f051f9ed4313aaed8c3ddf36ee`\n- 既存のアプリやPR #62のコードは変更せず、TouchEventの接触数・PointerEventの接触数・各開始回数・入力遅延・定期更新の最長停止をそれぞれ独立表示する。線を描く機能をオン・オフでき、Canvas2Dを使わない状態と使う状態を比較できる。生ログはコピー可能。\n\n判定方針：\n1. 描画オフで動作し、オンで停止 → Canvas2D描画またはその周辺のイベント処理を対象に調査。\n2. どちらでも入力通知だけ増えず、定期更新が動く → ブラウザー側の入力配送、イベント対象、接触抑制などを調査。ただし端末故障と決めない。\n3. 定期更新自体が止まる → ページ内のJavaScript処理停滞を調査。\n4. 入力通知が届く → Illustro本体の操作認識・画面更新の経路を改めて追跡。\n\nページのGitHub保存と実装内容の静的確認は実施済み。実端末での実行と公開URLのHTTP到達は未確認。根本原因・完全修正を宣言しない。"
+    },
+    {
+      "id": 6396371658,
+      "url": "https://github.com/totoro0419/illustro/pull/62#issuecomment-6396371658",
+      "created_at": "2026-10-25T10:13:49Z",
+      "body": "## 調査範囲の訂正（2026-10-25）\n\nユーザーが問題としているのは **Illustroで一筆を離したあと、仮線が見えている状態から「線を作品に反映しました」になるまでの間に限って、タッチ・キャンバス操作が効かなくなる** 現象。ブラシや正式描画を使わない独立`control.html`でタッチ数が変わらなかったことは、この特有の待機区間の原因説明・再現にならない。独立検査を修正案や合否根拠として扱わない。\n\nコードの事実（PR #60系）：\n- `BrushSurface.finishStroke()` はペン離し時に `this.pointer=null` を先に実行し、`session.end()` と履歴の確定処理は非同期で進める。\n- `CanvasNavigation.touchDown/touchMove` の処理は `gpuFinishes` の完了を明示的に待っていない。\n- ただし `BrushSurface.down` は `event.target` がcanvas/surfaceでないイベントを排除する。PR #54で別系統の修正が試みられているが、PR #60にはこの変更が入っていない。これだけが原因だとは結論しない。\n\n今後の調査・修正は **本物のIllustroで太いGペンを描き、pen-up → 仮線表示 → 正式確定まで** の区間に限定し、`window`の入力到達、`BrushSurface`への入力到達、`CanvasNavigation`の変換、画面表示の更新、主スレッドが長時間占有されたかを独立して突き合わせる。タッチ数が後から増えたことを「その瞬間に初めて接触した」と解釈しない。ユーザーが使っていた最新コードを退行させるPR #49基準への単純な巻き戻しは禁止。現時点で不具合は未修正。"
+    }
+  ]
+}

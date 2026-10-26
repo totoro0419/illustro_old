@@ -1,0 +1,14 @@
+{
+  "scope": "Offline recorder/cleanup check with stand-in event targets, NOT browser event propagation or Android execution.",
+  "sourceSha256": "03a12df9bddec97ffc91ad39c9048fbd00f78c7dfea4f982473570ac85cc57fd",
+  "eventCopies": 1,
+  "recordedDeliveryStages": 6,
+  "repeatedStatusObservations": 2,
+  "continuousTimerRows": 2,
+  "createdElements": 0,
+  "listenersAfterStop": 0,
+  "timersAfterStop": 0,
+  "framesAfterStop": 0,
+  "executesOnUserAndroid": false,
+  "rootCauseIdentified": false
+}
