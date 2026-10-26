@@ -75,8 +75,8 @@
     },
     {
       "path": "docs/investigations/input-loss-2026-10-26/evidence/published-observation.json",
-      "bytes": 1090,
-      "sha256": "0fdcc0589103dfd89a7a6fa83a819d6f456f4459cb1d7911fe4211f724cdbb31"
+      "bytes": 1223,
+      "sha256": "63f057d544f85f27427cbfe87c639028902d86e43383cd9784f92e60099275b6"
     },
     {
       "path": "docs/investigations/input-loss-2026-10-26/evidence/published-source-match.json",

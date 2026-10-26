@@ -1,5 +1,4 @@
 {
-  "observedAtUtc": "2026-10-26T10:12:27Z",
   "surface": "Cloud Chrome, not the user's Android device",
   "landing": "https://totoro0419.github.io/illustro/qa/m10-real-input/",
   "app": "https://totoro0419.github.io/illustro/qa/m10-real-input/app/?inputTrace=1#home",
@@ -20,5 +19,7 @@
     "usbBusAvailable": false,
     "androidSdkRootSet": false,
     "androidHomeSet": false
-  }
+  },
+  "observedDateJst": "2026-10-26",
+  "observationClockNote": "Exact wall-clock observation time was not separately retained; the date is recorded without inferred precision."
 }
