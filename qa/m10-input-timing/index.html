@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Illustro 指入力・負荷比較テスト</title>
+<style>
+*{box-sizing:border-box}body{margin:12px auto;padding:0 10px 35px;max-width:740px;background:#f0f4f9;color:#243953;font:15px/1.55 system-ui,sans-serif}
+h1{font-size:22px}h2{font-size:17px;margin:0 0 8px}.box{background:white;border:1px solid #d4e0ec;border-radius:12px;margin:12px 0;padding:14px}
+button,select{font:inherit;min-height:46px;padding:8px;border-radius:9px}button{background:#185cb4;color:white;border:0;font-weight:bold}button.alt{background:#e4edfa;color:#18518c;border:1px solid #b4c9e4}button:disabled{opacity:.4}
+select{width:100%;background:white;border:1px solid #b4c9e4}.buttons{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}.buttons button{flex:1 1 135px}
+.note{color:#526981;font-size:13px}#pad{height:270px;position:relative;border:2px dashed #558bd0;background:linear-gradient(145deg,#eff6ff,#d9eafa);touch-action:none;user-select:none;border-radius:13px}
+#pad.armed{background:#fff0d6;border-color:#cf7b1e}#pad canvas{position:absolute;width:100%;height:100%;pointer-events:none}
+#pad span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:12px;pointer-events:none;font-weight:bold;color:#20518a}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:7px}.stats div{padding:8px;background:#f0f5fa;border-radius:8px;font-size:12px}.stats b{display:block;font-size:20px}
+pre{background:#f3f6fa;max-height:260px;overflow:auto;padding:9px;white-space:pre-wrap;word-break:break-word;font:11px/1.5 monospace}
+</style></head><body>
+<h1>Illustro 指入力が消える原因の比較テスト</h1>
+<p class="note">これは本体とは独立したページです。絵や保存データを変更しません。以下の描画負荷はIllustro本体のブラシと同一ではありません。</p>
+<section class="box"><h2>1. 処理を選んで開始</h2>
+<label for="mode">試験の種類</label><select id="mode">
+<option value="idle">A：何もしない（比較の基準）</option>
+<option value="worker">B：別の場所で計算（CPU）</option>
+<option value="gpu">C：GPUで画像を大量描画</option>
+<option value="bitmap">D：画像を受け渡して表示</option>
+<option value="mixed">E：B＋C＋Dを同時に実行</option>
+<option value="main">F：画面側で重い計算（違いを見るため）</option>
+</select>
+<div class="buttons"><button id="start">ボタン開始（2秒後）</button><button id="arm" class="alt">ペンを離したら開始</button><button id="stop" class="alt" disabled>中止</button></div>
+<p id="status">準備完了。まずAで試してください。</p><p id="clock" style="font-weight:bold">待機中</p>
+<p class="note">1回4秒。ボタン開始では、開始前から指を置く試験と、開始直後に指を置く試験をそれぞれ行えます。</p>
+</section>
+<section class="box"><h2>2. 実際にここへ触れる</h2>
+<div id="pad"><canvas id="ink" aria-hidden="true"></canvas><span>指を置いて長押し<br>またはペンで線を描く</span></div>
+<p class="note">ペン開始：先に上の「ペンを離したら開始」を押し、この枠内に実際のペンで線を描いて離し、直後に指を置いて長押ししてください。物理的な接触時刻は取得できず、ページが受信した通知だけを記録します。</p></section>
+<section class="box"><h2>3. 記録を見る・送る</h2>
+<div class="stats">
+<div>ページに届いたTouchの指の数<b id="tc">0</b></div>
+<div>ページに届いたPointerの指の数<b id="pc">0</b></div>
+<div>試験中の指開始通知<b id="starts">—</b></div>
+<div>試験中の入力キャンセル<b id="cancels">—</b></div>
+<div>画面更新の最大間隔<b id="fg">—</b></div>
+<div>時計の最大間隔<b id="tg">—</b></div>
+</div>
+<div class="buttons"><button id="copy">記録をコピー</button><button id="save" class="alt">JSONを保存</button><button id="clear" class="alt">記録を消去</button></div>
+<p class="note" id="copymsg">試験を複数回行ったあと、まとめてコピーできます。</p><pre id="recent">まだ記録がありません。</pre>
+</section>
+<script>
+(()=>{'use strict';
+const by=id=>document.getElementById(id),pad=by('pad'),ink=by('ink'),zero=performance.now(),created=new Date().toISOString();
+const log=[],runs=[],fingers=new Set();let touchCount=0,run=null,armed=false,prep=null,worker=null,gpu=null,bitmap=null,lastFrame=performance.now(),lastTick=performance.now(),frameGap=0,timerGap=0,lastMove=0,penActive=false,penLast=null;
+const num=n=>Math.round(n*100)/100;
+function rec(kind,extra){log.push(Object.assign({at:num(performance.now()-zero),kind},extra||{}));if(log.length>12000){log.splice(0,1000);log.push({at:num(performance.now()-zero),kind:'older-records-dropped',count:1000});}}
+function target(e){const x=e.target;return x&&x.tagName?x.tagName.toLowerCase()+(x.id?'#'+x.id:''):'other';}
+function resize(){const r=pad.getBoundingClientRect(),scale=Math.min(2,devicePixelRatio||1);ink.width=Math.max(1,Math.floor(r.width*scale));ink.height=Math.max(1,Math.floor(r.height*scale));ink.getContext('2d').setTransform(scale,0,0,scale,0,0);}
+resize();addEventListener('resize',resize);
+function penDraw(e,kind){if(e.pointerType!=='pen'||!(e.target===pad||pad.contains(e.target)))return;
+const r=pad.getBoundingClientRect(),p={x:e.clientX-r.left,y:e.clientY-r.top},c=ink.getContext('2d');
+if(kind==='pointerdown'){penActive=true;penLast=p;}
+if(kind==='pointermove'&&penActive&&penLast){c.beginPath();c.moveTo(penLast.x,penLast.y);c.lineTo(p.x,p.y);c.strokeStyle='#1b69c4';c.lineWidth=4;c.lineCap='round';c.stroke();penLast=p;}
+if(kind==='pointerup'||kind==='pointercancel'){penActive=false;penLast=null;}}
+const P=['pointerdown','pointerup','pointercancel','lostpointercapture','pointermove'];
+for(const name of P){for(const place of ['window','pad']){const node=place==='window'?window:pad;
+node.addEventListener(name,e=>{if(place==='window'){if(name==='pointerdown'&&e.pointerType==='touch')fingers.add(e.pointerId);
+if((name==='pointerup'||name==='pointercancel'||name==='lostpointercapture')&&e.pointerType==='touch')fingers.delete(e.pointerId);
+if(name==='pointermove'&&performance.now()-lastMove<100)return;
+if(name==='pointermove')lastMove=performance.now();}
+rec(name,{place,type:e.pointerType,id:e.pointerId,lagMs:num(Math.max(0,performance.now()-e.timeStamp)),target:target(e)});
+if(place==='window'){penDraw(e,name);
+if(armed&&name==='pointerup'&&e.pointerType==='pen'&&(e.target===pad||pad.contains(e.target))){armed=false;pad.classList.remove('armed');begin('pen-up');}}
+},{capture:true});}}
+for(const name of ['touchstart','touchend','touchcancel','touchmove'])for(const place of ['window','pad']){
+(place==='window'?window:pad).addEventListener(name,e=>{if(place==='window')touchCount=e.touches.length;
+if(name==='touchmove'&&performance.now()-lastMove<100)return;
+if(name==='touchmove')lastMove=performance.now();
+rec(name,{place,count:e.touches.length,ids:Array.from(e.changedTouches,t=>t.identifier),target:target(e),lagMs:num(Math.max(0,performance.now()-e.timeStamp))});},{capture:true,passive:true});}
+addEventListener('blur',()=>rec('blur'));document.addEventListener('visibilitychange',()=>rec('visibility',{state:document.visibilityState}));
+let longtasks=false;try{if(PerformanceObserver.supportedEntryTypes.includes('longtask')){let ob=new PerformanceObserver(items=>{for(const e of items.getEntries())rec('longtask',{start:num(e.startTime-zero),duration:num(e.duration)});});ob.observe({entryTypes:['longtask']});longtasks=true;}}catch(e){rec('longtask-unavailable',{error:String(e)});}
+function startWorker(){const script='onmessage=()=>{const until=Date.now()+5500;let v=1;while(Date.now()<until){for(let i=0;i<80000;i++)v=Math.sin(v+i/100000)+Math.cos(v);}postMessage(v)}';
+const url=URL.createObjectURL(new Blob([script],{type:'text/javascript'}));worker=new Worker(url);URL.revokeObjectURL(url);worker.onmessage=()=>rec('worker-done');worker.onerror=e=>rec('worker-error',{message:e.message});worker.postMessage('go');rec('worker-begin');}
+function makeGpu(){const canvas=document.createElement('canvas');canvas.width=canvas.height=640;
+const gl=canvas.getContext('webgl2',{antialias:false,preserveDrawingBuffer:false,depth:false,stencil:false});
+if(!gl)throw Error('WebGL2に対応していません');
+const v='#version 300 es\nin vec2 a;void main(){gl_Position=vec4(a,0.,1.);}',f='#version 300 es\nprecision highp float;uniform float t;out vec4 color;void main(){vec2 p=gl_FragCoord.xy/640.;float x=p.x+t;for(int i=0;i<20;i++){x=sin(x+p.y+float(i)*.15)+cos(x*.7+p.x);}color=vec4(abs(sin(x)),.4,.8,1.);}';
+function compile(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s;}
+const program=gl.createProgram();gl.attachShader(program,compile(gl.VERTEX_SHADER,v));gl.attachShader(program,compile(gl.FRAGMENT_SHADER,f));gl.linkProgram(program);
+if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));gl.useProgram(program);
+const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+const a=gl.getAttribLocation(program,'a');gl.enableVertexAttribArray(a);gl.vertexAttribPointer(a,2,gl.FLOAT,false,0,0);
+gpu={gl,program,uniform:gl.getUniformLocation(program,'t'),draws:0};rec('gpu-ready',{pixels:640*640});}
+function gpuFrame(){if(!gpu)return;const g=gpu;g.gl.useProgram(g.program);g.gl.viewport(0,0,640,640);for(let i=0;i<3;i++){g.gl.uniform1f(g.uniform,performance.now()*.001+i);g.gl.drawArrays(g.gl.TRIANGLE_STRIP,0,4);g.draws++;}}
+function makeBitmap(){if(typeof OffscreenCanvas==='undefined')throw Error('OffscreenCanvas非対応');
+const src=new OffscreenCanvas(512,512),c=src.getContext('2d'),canvas=document.createElement('canvas');canvas.width=canvas.height=512;
+const dest=canvas.getContext('bitmaprenderer');if(!c||!dest)throw Error('bitmaprenderer非対応');
+bitmap={src,c,dest,n:0};rec('bitmap-ready');}
+function bitmapFrame(){if(!bitmap)return;const b=bitmap;for(let i=0;i<2;i++){b.c.fillStyle='hsl('+((b.n*17)%360)+' 70% 60%)';b.c.fillRect(0,0,512,512);b.dest.transferFromImageBitmap(b.src.transferToImageBitmap());b.n++;}}
+function mainLoad(){function work(){if(!run||run.mode!=='main')return;const a=performance.now();while(performance.now()-a<32){Math.sqrt(Math.random()*40000);}if(run)setTimeout(work,28);}setTimeout(work,0);rec('main-work-begin');}
+function stopLoad(){if(worker){worker.terminate();worker=null;}gpu=null;bitmap=null;}
+function begin(trigger){if(run||prep!==null)return;const mode=by('mode').value;stopLoad();
+frameGap=timerGap=0;run={number:runs.length+1,mode,trigger,start:num(performance.now()-zero),from:log.length,until:performance.now()+4000,touchAtStart:touchCount,pointerAtStart:fingers.size};
+runs.push(run);by('start').disabled=by('arm').disabled=by('mode').disabled=true;by('stop').disabled=false;
+rec('test-start',{number:run.number,mode,trigger});by('status').textContent='試験中。指を置いてそのまま長押ししてください。';
+try{if(mode==='worker'||mode==='mixed')startWorker();if(mode==='gpu'||mode==='mixed')makeGpu();
+if(mode==='bitmap'||mode==='mixed')makeBitmap();if(mode==='main')mainLoad();
+}catch(e){run.error=String(e);rec('test-error',{error:String(e)});end('unsupported');}drawUI();}
+function end(reason){if(!run)return;const result=run;rec('test-end',{number:result.number,reason});
+result.end=num(performance.now()-zero);result.durationMs=num(result.end-result.start);result.reason=reason;
+result.frameGapMs=num(frameGap);result.timerGapMs=num(timerGap);result.gpuDraws=gpu?gpu.draws:0;result.bitmapTransfers=bitmap?bitmap.n:0;
+result.touchAtEnd=touchCount;const l=log.slice(result.from);
+result.windowTouchStarts=l.filter(e=>e.kind==='touchstart'&&e.place==='window').length;
+result.windowPointerStarts=l.filter(e=>e.kind==='pointerdown'&&e.place==='window'&&e.type==='touch').length;
+result.touchCancels=l.filter(e=>e.kind==='touchcancel'&&e.place==='window').length;
+result.pointerCancels=l.filter(e=>e.kind==='pointercancel'&&e.place==='window'&&e.type==='touch').length;
+run=null;stopLoad();by('start').disabled=by('arm').disabled=by('mode').disabled=false;by('stop').disabled=true;
+by('status').textContent='終了：Touch開始 '+result.windowTouchStarts+'件／Pointer開始 '+result.windowPointerStarts+'件、キャンセル '+(result.touchCancels+result.pointerCancels)+'件。';
+by('clock').textContent='試験 '+result.number+'：'+result.mode+'／'+reason;drawUI();}
+function raf(now){if(run)frameGap=Math.max(frameGap,now-lastFrame);lastFrame=now;if(run&&now<run.until){if(gpu)gpuFrame();if(bitmap)bitmapFrame();}requestAnimationFrame(raf);}
+requestAnimationFrame(raf);setInterval(()=>{const now=performance.now();if(run)timerGap=Math.max(timerGap,now-lastTick);lastTick=now;if(run&&now>=run.until)end('elapsed');drawUI();},100);
+function drawUI(){const last=run||runs[runs.length-1];by('tc').textContent=touchCount;by('pc').textContent=fingers.size;
+const list=run?log.slice(run.from):[];by('starts').textContent=run?list.filter(e=>e.kind==='touchstart'&&e.place==='window').length:(last?last.windowTouchStarts:'—');
+by('cancels').textContent=run?list.filter(e=>(e.kind==='touchcancel'||e.kind==='pointercancel')&&e.place==='window').length:(last?last.touchCancels+last.pointerCancels:'—');
+by('fg').textContent=last?num(run?frameGap:last.frameGapMs)+'ms':'—';by('tg').textContent=last?num(run?timerGap:last.timerGapMs)+'ms':'—';
+if(run)by('clock').textContent='残り約 '+Math.max(0,Math.ceil((run.until-performance.now())/1000))+'秒';
+by('recent').textContent=log.slice(-12).map(x=>JSON.stringify(x)).join('\n')||'まだ記録がありません。';}
+by('start').onclick=()=>{if(run||prep!==null||armed)return;by('start').disabled=by('arm').disabled=true;by('stop').disabled=false;
+rec('countdown');by('status').textContent='2秒後に開始します。枠内に指を置く準備をしてください。';
+prep=setTimeout(()=>{prep=null;begin('button');},2000);};
+by('arm').onclick=()=>{if(run||prep!==null)return;armed=!armed;pad.classList.toggle('armed',armed);by('start').disabled=armed;by('stop').disabled=!armed;rec('pen-armed',{armed});
+by('status').textContent=armed?'ペンで青い場所に線を描き、離してください。':'ペン開始を取り消しました。';};
+by('stop').onclick=()=>{if(prep!==null){clearTimeout(prep);prep=null;by('start').disabled=by('arm').disabled=false;by('stop').disabled=true;rec('countdown-cancel');}else if(run)end('user-stop');
+else if(armed){armed=false;pad.classList.remove('armed');by('start').disabled=false;by('stop').disabled=true;rec('pen-cancel');}drawUI();};
+function report(){return JSON.stringify({kind:'Illustro independent input timing comparison',created,exported:new Date().toISOString(),url:location.href,userAgent:navigator.userAgent,longtasks,clockOrigin:performance.timeOrigin,runs,events:log},null,2);}
+by('copy').onclick=async()=>{const s=report();try{await navigator.clipboard.writeText(s);by('copymsg').textContent='コピーしました。チャットに貼り付けてください。';}catch(e){const t=document.createElement('textarea');t.value=s;t.style.width='100%';t.style.height='140px';by('copymsg').replaceChildren(t);t.select();}};
+by('save').onclick=()=>{const u=URL.createObjectURL(new Blob([report()],{type:'application/json'})),a=document.createElement('a');a.href=u;a.download='illustro-input-test-'+Date.now()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);};
+by('clear').onclick=()=>{if(run||armed||prep!==null)return;log.length=runs.length=0;rec('records-cleared');drawUI();};
+rec('page-ready',{hasOffscreen:typeof OffscreenCanvas!=='undefined'});drawUI();
+})();
+</script></body></html>
