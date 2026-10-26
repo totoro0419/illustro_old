@@ -84,15 +84,15 @@ const program=gl.createProgram();gl.attachShader(program,compile(gl.VERTEX_SHADE
 if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));gl.useProgram(program);
 const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
 const a=gl.getAttribLocation(program,'a');gl.enableVertexAttribArray(a);gl.vertexAttribPointer(a,2,gl.FLOAT,false,0,0);
-gpu={gl,program,uniform:gl.getUniformLocation(program,'t'),draws:0};rec('gpu-ready',{pixels:640*640});}
+canvas.setAttribute('aria-hidden','true');Object.assign(canvas.style,{width:'105px',height:'105px',left:'auto',top:'auto',right:'5px',bottom:'5px',opacity:'.65'});pad.append(canvas);gpu={canvas,gl,program,uniform:gl.getUniformLocation(program,'t'),draws:0};rec('gpu-ready',{pixels:640*640});}
 function gpuFrame(){if(!gpu)return;const g=gpu;g.gl.useProgram(g.program);g.gl.viewport(0,0,640,640);for(let i=0;i<3;i++){g.gl.uniform1f(g.uniform,performance.now()*.001+i);g.gl.drawArrays(g.gl.TRIANGLE_STRIP,0,4);g.draws++;}}
 function makeBitmap(){if(typeof OffscreenCanvas==='undefined')throw Error('OffscreenCanvas非対応');
 const src=new OffscreenCanvas(512,512),c=src.getContext('2d'),canvas=document.createElement('canvas');canvas.width=canvas.height=512;
 const dest=canvas.getContext('bitmaprenderer');if(!c||!dest)throw Error('bitmaprenderer非対応');
-bitmap={src,c,dest,n:0};rec('bitmap-ready');}
+canvas.setAttribute('aria-hidden','true');Object.assign(canvas.style,{width:'105px',height:'105px',left:'auto',top:'auto',right:'5px',bottom:'5px',opacity:'.65'});pad.append(canvas);bitmap={canvas,src,c,dest,n:0};rec('bitmap-ready');}
 function bitmapFrame(){if(!bitmap)return;const b=bitmap;for(let i=0;i<2;i++){b.c.fillStyle='hsl('+((b.n*17)%360)+' 70% 60%)';b.c.fillRect(0,0,512,512);b.dest.transferFromImageBitmap(b.src.transferToImageBitmap());b.n++;}}
 function mainLoad(){function work(){if(!run||run.mode!=='main')return;const a=performance.now();while(performance.now()-a<32){Math.sqrt(Math.random()*40000);}if(run)setTimeout(work,28);}setTimeout(work,0);rec('main-work-begin');}
-function stopLoad(){if(worker){worker.terminate();worker=null;}gpu=null;bitmap=null;}
+function stopLoad(){if(worker){worker.terminate();worker=null;}if(gpu){gpu.canvas.remove();gpu.gl.getExtension('WEBGL_lose_context')?.loseContext();gpu=null;}if(bitmap){bitmap.canvas.remove();bitmap=null;}}
 function begin(trigger){if(run||prep!==null)return;const mode=by('mode').value;stopLoad();
 frameGap=timerGap=0;run={number:runs.length+1,mode,trigger,start:num(performance.now()-zero),from:log.length,until:performance.now()+4000,touchAtStart:touchCount,pointerAtStart:fingers.size};
 runs.push(run);by('start').disabled=by('arm').disabled=by('mode').disabled=true;by('stop').disabled=false;
