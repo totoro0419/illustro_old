@@ -389,4 +389,3 @@ PointerEventManagerのprevented pointerdownに関係するqueueは互換mouse/ge
 [trace-input]: https://github.com/totoro0419/illustro/blob/eeea860a1997bbe613af4e07601d78e0a39eeceb/apps/editor/src/inputFreezeTrace.ts#L53-L66
 [tx]: https://github.com/totoro0419/illustro/blob/eeea860a1997bbe613af4e07601d78e0a39eeceb/packages/core/src/transaction.ts#L33-L38
 [worker-sink]: https://github.com/totoro0419/illustro/blob/eeea860a1997bbe613af4e07601d78e0a39eeceb/packages/brush-rt/src/worker-stroke-sink.mjs#L20-L22
-
