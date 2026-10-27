@@ -10,6 +10,27 @@ export function installInputFreezeTrace(){
  let touchCount=0,touchStarts=0,pointerTouches=0,latestEventLag=0,maxEventLag=0;
  let longestLongTask=0,totalLongTasks=0,statusTime=0;
  const pointerIds=new Set<number>();
+ const drawingPens=new Set<number>();
+ type PendingWindow={start:number;pointerStarts:number;touchStarts:number;pointerCancels:number;touchCancels:number;touchMoves:number;touchAtStart:number};
+ type FinishedWindow=PendingWindow&{end:number;durationMs:number;reason:string};
+ let pendingWindow:PendingWindow|null=null;
+ const completedWindows:FinishedWindow[]=[];
+ const drawingTarget=(target:EventTarget|null)=>target instanceof Element&&
+  (target.id==='canvas'||!!target.closest('.surface,#canvas'));
+ const phase=()=>drawingPens.size?'ペンで描画中':pendingWindow?'ペン離し後・本線反映待ち':'待機／反映済み';
+ function closeWindow(reason:string){
+  if(!pendingWindow)return;
+  const previous=pendingWindow;
+  const end=getNow();
+  const complete:FinishedWindow={...previous,end:asTime(end),durationMs:asTime(end-previous.start),reason};
+  completedWindows.push(complete);
+  if(completedWindows.length>80)completedWindows.shift();
+  pendingWindow=null;
+  mark('pending-window-ended',{reason,durationMs:complete.durationMs,
+   pointerStarts:complete.pointerStarts,touchStarts:complete.touchStarts,
+   pointerCancels:complete.pointerCancels,touchCancels:complete.touchCancels,
+   touchMoves:complete.touchMoves});
+ }
  let recentText='待機',lastEventAt=getNow();
  const panel=document.createElement('output');
  const copy=document.createElement('button');
@@ -33,7 +54,9 @@ export function installInputFreezeTrace(){
  const render=()=>{
   const last=log.slice(-3).map(x=>x.kind).join(' → ');
   panel.textContent='【入力と画面停止の診断】\n'+
-   'Touch実数: '+touchCount+' / Pointer指: '+pointerIds.size+'\n'+
+   '区間: '+phase()+'\n'+
+   'TouchEvent接触: '+touchCount+'(ペン含む場合あり) / 指: '+pointerIds.size+'\n'+
+   '本線待ち中の指開始: '+(pendingWindow?.pointerStarts??completedWindows.at(-1)?.pointerStarts??'—')+'\n'+
    'Touch開始: '+touchStarts+' / 最後の入力: '+asTime(getNow()-lastEventAt)+'ms前\n'+
    '入力遅延: '+asTime(latestEventLag)+'ms / 最大: '+asTime(maxEventLag)+'ms\n'+
    '時計の最大停止: '+asTime(maxTimerLag)+'ms\n'+
@@ -54,13 +77,33 @@ export function installInputFreezeTrace(){
  for(const type of ['touchstart','touchmove','touchend','touchcancel'] as const)
   window.addEventListener(type,e=>{
    touchCount=e.touches.length;
-   if(type==='touchstart')touchStarts+=e.changedTouches.length;
+   if(type==='touchstart'){touchStarts+=e.changedTouches.length;if(pendingWindow)pendingWindow.touchStarts+=e.changedTouches.length;}
+   if(type==='touchcancel'&&pendingWindow)pendingWindow.touchCancels+=e.changedTouches.length;
+   if(type==='touchmove'&&pendingWindow)pendingWindow.touchMoves++;
    if(type!=='touchmove')recordInput(type,e,touchCount);
   },options);
  for(const type of ['pointerdown','pointerup','pointercancel'] as const)
   window.addEventListener(type,e=>{
    if(e.pointerType!=='touch'&&e.pointerType!=='pen')return;
-   if(type==='pointerdown')pointerIds.add(e.pointerId);else pointerIds.delete(e.pointerId);
+   if(e.pointerType==='touch'){
+    if(type==='pointerdown'){
+     pointerIds.add(e.pointerId);
+     if(pendingWindow){pendingWindow.pointerStarts++;mark('pending-finger-down',{id:e.pointerId,target:(e.target as Element|null)?.tagName??'unknown'});}
+    }else{
+     pointerIds.delete(e.pointerId);
+     if(type==='pointercancel'&&pendingWindow){pendingWindow.pointerCancels++;mark('pending-finger-cancel',{id:e.pointerId});}
+    }
+   }
+   if(e.pointerType==='pen'){
+    if(type==='pointerdown'&&drawingTarget(e.target)){
+     drawingPens.add(e.pointerId);
+     mark('stroke-pen-down',{id:e.pointerId});
+    }else if(type==='pointerup'&&drawingPens.delete(e.pointerId)){
+     closeWindow('new-stroke-released');
+     pendingWindow={start:asTime(getNow()),pointerStarts:0,touchStarts:0,pointerCancels:0,touchCancels:0,touchMoves:0,touchAtStart:touchCount};
+     mark('stroke-pen-released',{id:e.pointerId,touchAtStart:touchCount});
+    }else if(type==='pointercancel')drawingPens.delete(e.pointerId);
+   }
    pointerTouches=pointerIds.size;
    recordInput(type+' '+e.pointerType,e,pointerTouches);
   },options);
@@ -72,7 +115,7 @@ export function installInputFreezeTrace(){
    if(value===lastStatus)return;
    lastStatus=value;
    if(value.includes('線を作品に反映')||value.includes('消した内容を作品に反映')){
-    statusTime=getNow();mark('formal-confirmation',{status:value});
+    statusTime=getNow();mark('formal-confirmation',{status:value});closeWindow('formal-confirmation');
    }else if(value.includes('描画できます'))mark('drawing-ready');
    render();
   });
@@ -110,7 +153,9 @@ export function installInputFreezeTrace(){
   mark,
   snapshot:()=>({timeOrigin:performance.timeOrigin,now:getNow(),touchCount,touchStarts,
    pointerTouches,latestEventLag,maxEventLag,maxTimerLag,maxFrameGap,
-   totalLongTasks,longestLongTask,statusTime,recentText,events:[...log]}),
+   totalLongTasks,longestLongTask,statusTime,recentText,
+   phase:phase(),pendingWindow:pendingWindow?{...pendingWindow}:null,
+   completedWindows:[...completedWindows],events:[...log]}),
   clear:()=>{log.length=0;maxTimerLag=0;maxFrameGap=0;totalLongTasks=0;longestLongTask=0;}
  };
  (window as unknown as {__illustroInputFreezeTrace?:typeof api}).__illustroInputFreezeTrace=api;
